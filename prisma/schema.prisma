@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Agent {
+  id              String   @id @default(cuid())
+  name            String   // Researcher | Frontend | Backend | Review
+  color           String
+  status          String   @default("idle") // idle | working | error
+  currentTask     String   @default("waiting for tasks") // Task description
+  tasksCompleted  Int      @default(0)
+  tasksInQueue    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  events          Event[]
+}
+
+model Metrics {
+  id                    String   @id @default(cuid())
+  tasksCompletedToday   Int      @default(0)
+  tasksInProgress       Int      @default(0)
+  prsReviewed           Int      @default(0)
+  buildStatus           String   @default("passing") // passing | failing
+  lastBuildTime         String   @default("never")
+  testsPassed           Int      @default(0)
+  testsFailed           Int      @default(0)
+  updatedAt             DateTime @updatedAt
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  agentId   String
+  message   String
+  timestamp DateTime @default(now())
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+}
