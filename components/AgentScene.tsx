@@ -123,10 +123,10 @@ export default function AgentScene({ agents, speechBubbles }: AgentSceneProps) {
             )
           })}
 
-          {/* Office Decorations - whiteboard, plants, wall art, desk lamps */}
+          {/* Office Decorations - lounge, sofas, rugs, filing cabinets */}
           <OfficeDecor deskPositions={DESK_POSITIONS} agents={agents} />
 
-          {/* Short walls (no roof/ceiling) */}
+          {/* Short walls (TRANSPARENT for debugging) */}
           <ShortWalls />
         </Suspense>
       </Canvas>
@@ -138,22 +138,22 @@ export default function AgentScene({ agents, speechBubbles }: AgentSceneProps) {
 function ShortWalls() {
   return (
     <group>
-      {/* Back wall - SHORT (1.5m height only) */}
+      {/* Back wall - SHORT (1.5m height only) - TRANSPARENT FOR DEBUGGING */}
       <mesh position={[0, 0.75, -10]} receiveShadow>
         <planeGeometry args={[30, 1.5]} />
-        <meshStandardMaterial color="#2a2a2a" side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#2a2a2a" side={THREE.DoubleSide} transparent opacity={0.3} />
       </mesh>
       
-      {/* Left wall - SHORT */}
+      {/* Left wall - SHORT - TRANSPARENT */}
       <mesh position={[-15, 0.75, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[20, 1.5]} />
-        <meshStandardMaterial color="#252525" side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#252525" side={THREE.DoubleSide} transparent opacity={0.3} />
       </mesh>
       
-      {/* Right wall - SHORT */}
+      {/* Right wall - SHORT - TRANSPARENT */}
       <mesh position={[15, 0.75, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[20, 1.5]} />
-        <meshStandardMaterial color="#252525" side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#252525" side={THREE.DoubleSide} transparent opacity={0.3} />
       </mesh>
       
       {/* NO CEILING! Open top for isometric view */}
