@@ -3,22 +3,59 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const metrics = await prisma.metrics.findFirst({
-      orderBy: { updatedAt: 'desc' },
+    // Calculate real metrics from database
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    const CORE_WORKERS = ['Researcher', 'Backend', 'Frontend', 'Review']
+
+    const [completedToday, inProgress, workingAgents, errorToday] = await Promise.all([
+      // Tasks completed today
+      prisma.task.count({
+        where: {
+          status: 'completed',
+          completedAt: {
+            gte: todayStart
+          }
+        }
+      }),
+      
+      // Tasks in progress (pending, planning, or running)
+      prisma.task.count({
+        where: {
+          status: {
+            in: ['pending', 'planning', 'running']
+          }
+        }
+      }),
+
+      // Core workers currently working
+      prisma.agent.count({
+        where: {
+          name: { in: CORE_WORKERS },
+          status: 'working'
+        }
+      }),
+
+      // Tasks with errors today
+      prisma.task.count({
+        where: {
+          status: 'error',
+          completedAt: {
+            gte: todayStart
+          }
+        }
+      }),
+    ])
+
+    // Return real metrics for dashboard
+    return NextResponse.json({
+      tasksCompletedToday: completedToday,
+      tasksInProgress: inProgress,
+      agentsWorking: workingAgents,
+      totalWorkers: CORE_WORKERS.length,
+      taskErrors: errorToday,
     })
-
-    if (!metrics) {
-      return NextResponse.json({
-        leadsToday: 0,
-        inFlight: 0,
-        emailsSent: 0,
-        replies: 0,
-        interested: 0,
-        totalLeads: 0,
-      })
-    }
-
-    return NextResponse.json(metrics)
   } catch (error) {
     console.error('Error fetching metrics:', error)
     return NextResponse.json(

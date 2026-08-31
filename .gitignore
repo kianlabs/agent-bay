@@ -42,3 +42,9 @@ next-env.d.ts
 
 # hermes execution logs
 .hermes-runs/
+
+# sqlite database (runtime state, not source-controlled)
+prisma/dev.db
+prisma/dev.db-journal
+prisma/dev.db-shm
+prisma/dev.db-wal

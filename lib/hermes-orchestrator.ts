@@ -100,7 +100,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
       return
     }
 
-    const { plan, raw: planRaw } = planResult
+    const { plan } = planResult
     console.log('[Orchestrator] Plan created:', JSON.stringify(plan, null, 2))
 
     // Save plan to DB
@@ -186,11 +186,12 @@ export async function orchestrateTask(taskId: string, prompt: string) {
           continue
         }
 
-        // Update agent status to 'working'
+        // Update agent status to 'working' with real currentTask
         await prisma.agent.update({
           where: { id: agent.id },
           data: {
             status: 'working',
+            currentTask: step.task,
             lastError: null,
             errorDetails: null,
             errorTimestamp: null,
@@ -200,6 +201,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
         await pusherServer.trigger('agent-ops', 'agent-updated', {
           agentId: agent.id,
           status: 'working',
+          currentTask: step.task,
         })
 
         await prisma.activity.create({
@@ -217,11 +219,12 @@ export async function orchestrateTask(taskId: string, prompt: string) {
         const result = await executeHermesAgent(agentName, step.task, taskId)
 
         if (result.success) {
-          // Success
+          // Success - reset to idle with waiting state
           await prisma.agent.update({
             where: { id: agent.id },
             data: {
               status: 'idle',
+              currentTask: 'Waiting for task',
               tasksCompleted: { increment: 1 },
             },
           })
@@ -229,6 +232,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
           await pusherServer.trigger('agent-ops', 'agent-updated', {
             agentId: agent.id,
             status: 'idle',
+            currentTask: 'Waiting for task',
           })
 
           await prisma.activity.create({
@@ -270,7 +274,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
             `[Orchestrator] ${agentName} completed in ${result.durationMs}ms`
           )
         } else {
-          // Error or timeout
+          // Error or timeout - keep task description for context
           const errorMsg = result.timedOut
             ? `Timed out after ${Math.round(result.durationMs / 1000)}s`
             : result.stderr || 'Unknown error'
@@ -279,6 +283,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
             where: { id: agent.id },
             data: {
               status: 'error',
+              currentTask: `Failed: ${step.task.substring(0, 100)}`,
               lastError: errorMsg.substring(0, 200),
               errorDetails: result.stderr.substring(0, 1000),
               errorTimestamp: new Date(),
@@ -288,6 +293,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
           await pusherServer.trigger('agent-ops', 'agent-updated', {
             agentId: agent.id,
             status: 'error',
+            currentTask: `Failed: ${step.task.substring(0, 100)}`,
           })
 
           await prisma.activity.create({

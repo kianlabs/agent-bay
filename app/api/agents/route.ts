@@ -3,7 +3,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
+    // Dashboard shows only 4 core workers
+    // Hermes Main stays internal for orchestration
+    const CORE_WORKERS = ['Researcher', 'Backend', 'Frontend', 'Review']
+    
     const agents = await prisma.agent.findMany({
+      where: {
+        name: { in: CORE_WORKERS }
+      },
       orderBy: { name: 'asc' },
       select: {
         id: true,
