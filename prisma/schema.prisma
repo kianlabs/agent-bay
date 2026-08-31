@@ -83,3 +83,27 @@ model ErrorLog {
   @@index([agentId])
   @@index([createdAt])
 }
+
+// Task queue for real Hermes Agent execution
+model Task {
+  id          String    @id @default(cuid())
+  prompt      String    // User's original request
+  assignedTo  String?   // DEPRECATED: kept for backward compat, use plan.agents instead
+  status      String    @default("pending") // pending | planning | running | completed | error
+  result      String?   // Final result after evaluation
+  error       String?   // Error message if failed
+  
+  // Hermes Main orchestration
+  plan        String?   // JSON: HermesPlan from Hermes Main
+  evaluation  String?   // JSON: HermesEvaluation from Hermes Main
+  
+  // Agent execution results (JSON array of {agent, result, error})
+  agentResults String?
+  
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  @@index([status])
+  @@index([createdAt])
+}
