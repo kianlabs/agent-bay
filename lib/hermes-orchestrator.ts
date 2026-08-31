@@ -7,6 +7,8 @@ import {
 } from './hermes-executor'
 import { MAX_CONCURRENT_WORKERS } from './hermes-config'
 import { routeTask } from './hermes-runner'
+import { tryAcquireLock, releaseLock, isLocked } from './execution-lock'
+import { trackAgentForTask, getAgentsForTask, clearAgentsForTask, isAgentUsedByOtherActiveTask } from './task-agent-tracking'
 
 // Track running workers (Main not counted)
 let runningWorkers = 0
@@ -20,12 +22,37 @@ const AGENT_NAME_MAP: Record<string, string> = {
 }
 
 /**
- * Orchestrate full task execution:
+ * Orchestrate full task execution (public API)
+ * Acquires execution lock and delegates to internal implementation
+ */
+export async function orchestrateTask(taskId: string, prompt: string) {
+  // Try to acquire execution lock
+  if (!tryAcquireLock(taskId)) {
+    console.log(`[Orchestrator] Task ${taskId} already active, skipping duplicate execution`)
+    return
+  }
+
+  try {
+    await runOrchestrationLocked(taskId, prompt)
+  } finally {
+    // Always clear tracking and release lock (even on success or error)
+    clearAgentsForTask(taskId)
+    releaseLock(taskId)
+  }
+}
+
+/**
+ * Internal orchestration implementation
+ * ASSUMES: execution lock already acquired by caller
+ * 
+ * Full task execution:
  * 1. Hermes Main planning
  * 2. Execute selected agents (with dependency handling)
  * 3. Hermes Main evaluation
+ * 
+ * EXPORTED for recovery system use only - do not call directly from routes
  */
-export async function orchestrateTask(taskId: string, prompt: string) {
+export async function runOrchestrationLocked(taskId: string, prompt: string) {
   try {
     console.log(`[Orchestrator] Starting task ${taskId}`)
 
@@ -40,6 +67,14 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     // === PHASE 1: HERMES MAIN PLANNING ===
     console.log('[Orchestrator] Phase 1: Planning')
+
+    // Track Hermes Main for this task
+    const hermesMainAgent = await prisma.agent.findFirst({
+      where: { name: 'Hermes Main' },
+    })
+    if (hermesMainAgent) {
+      trackAgentForTask(taskId, hermesMainAgent.id)
+    }
 
     // Hermes Main must be marked working BEFORE the real Hermes process starts.
     const mainAgentBeforePlanning = await prisma.agent.findFirst({
@@ -185,6 +220,9 @@ export async function orchestrateTask(taskId: string, prompt: string) {
           })
           continue
         }
+
+        // Track this agent for this task
+        trackAgentForTask(taskId, agent.id)
 
         // Update agent status to 'working' with real currentTask
         await prisma.agent.update({
@@ -479,6 +517,51 @@ export async function orchestrateTask(taskId: string, prompt: string) {
         completedAt: new Date(),
       },
     })
+
+    // Reset any agents stuck in working state for THIS task only
+    await resetStaleAgentsForTask(taskId)
+  }
+}
+
+/**
+ * Reset agents that were used by a specific failed task
+ * SCOPED cleanup - only resets agents for this task, not all working agents
+ * Protects shared agents still used by other active tasks
+ */
+async function resetStaleAgentsForTask(taskId: string) {
+  try {
+    const agentIds = getAgentsForTask(taskId)
+    
+    if (agentIds.length === 0) {
+      return
+    }
+    
+    console.log(`[Orchestrator] Resetting ${agentIds.length} agents for failed task ${taskId}`)
+    
+    for (const agentId of agentIds) {
+      // Check if this agent is used by other active tasks
+      const hasOtherOwner = isAgentUsedByOtherActiveTask(agentId, taskId, isLocked)
+      
+      if (hasOtherOwner) {
+        console.log(`[Orchestrator] Skipping reset for agent ${agentId} - still used by other active task`)
+        continue
+      }
+      
+      // Safe to reset - check current status
+      const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+      if (agent && agent.status === 'working') {
+        await prisma.agent.update({
+          where: { id: agentId },
+          data: {
+            status: 'idle',
+            currentTask: 'Waiting for task',
+          },
+        })
+        console.log(`[Orchestrator] Reset agent ${agent.name} to idle (task ${taskId} failed)`)
+      }
+    }
+  } catch (err) {
+    console.error('[Orchestrator] Failed to reset stale agents:', err)
   }
 }
 
