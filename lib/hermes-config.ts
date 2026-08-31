@@ -61,12 +61,16 @@ export interface HermesPlan {
 // Execution result from Hermes agent
 export interface HermesExecutionResult {
   success: boolean
-  stdout: string
-  stderr: string
+  stdout: string // Preview only (bounded)
+  stderr: string // Preview only (bounded)
   exitCode: number | null
   signal: NodeJS.Signals | null
   timedOut: boolean
   durationMs: number
+  stdoutTruncated: boolean
+  stderrTruncated: boolean
+  rawStdoutPath?: string
+  rawStderrPath?: string
 }
 
 // Final evaluation from Hermes Main

@@ -1,17 +1,35 @@
 import { spawn } from 'child_process'
+import { writeFile, mkdir } from 'fs/promises'
+import { join } from 'path'
 import {
   AGENT_PROFILES,
   getTimeoutForAgent,
   HermesExecutionResult,
 } from './hermes-config'
 
+// Output preview limits (keep in memory)
+const STDOUT_PREVIEW_LIMIT = 50 * 1024 // 50KB
+const STDERR_PREVIEW_LIMIT = 50 * 1024 // 50KB
+
+// Log directory
+const LOGS_DIR = '.hermes-runs'
+
 /**
- * Execute Hermes agent with one-shot prompt using spawn (safer than exec)
- * Returns structured execution result
+ * Ensure log directory exists for a task
+ */
+async function ensureLogDir(taskId: string): Promise<string> {
+  const taskDir = join(process.cwd(), LOGS_DIR, `task_${taskId}`)
+  await mkdir(taskDir, { recursive: true })
+  return taskDir
+}
+
+/**
+ * Execute Hermes agent with bounded output and log files
  */
 export async function executeHermesAgent(
   agentName: string,
-  prompt: string
+  prompt: string,
+  taskId?: string
 ): Promise<HermesExecutionResult> {
   const profile = AGENT_PROFILES[agentName as keyof typeof AGENT_PROFILES]
 
@@ -21,16 +39,36 @@ export async function executeHermesAgent(
 
   const timeout = getTimeoutForAgent(agentName)
   const startTime = Date.now()
+  const timestamp = Date.now()
+
+  // Prepare log paths if taskId provided
+  let logDir: string | undefined
+  let stdoutLogPath: string | undefined
+  let stderrLogPath: string | undefined
+
+  if (taskId) {
+    try {
+      logDir = await ensureLogDir(taskId)
+      stdoutLogPath = join(logDir, `${agentName.toLowerCase()}_${timestamp}.stdout.log`)
+      stderrLogPath = join(logDir, `${agentName.toLowerCase()}_${timestamp}.stderr.log`)
+    } catch (err) {
+      console.error(`[Executor] Failed to create log dir for task ${taskId}:`, err)
+      // Continue without logging to disk
+    }
+  }
 
   return new Promise((resolve) => {
-    let stdout = ''
-    let stderr = ''
+    let stdoutPreview = ''
+    let stderrPreview = ''
+    let stdoutFull = ''
+    let stderrFull = ''
+    let stdoutTruncated = false
+    let stderrTruncated = false
     let timedOut = false
 
     // Spawn Hermes process
     const child = spawn(profile, ['-z', prompt, '--model', 'kr/auto'], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      timeout,
     })
 
     // Timeout handler
@@ -38,7 +76,6 @@ export async function executeHermesAgent(
       timedOut = true
       child.kill('SIGTERM')
 
-      // Force kill after 5s if SIGTERM doesn't work
       setTimeout(() => {
         if (!child.killed) {
           child.kill('SIGKILL')
@@ -46,34 +83,77 @@ export async function executeHermesAgent(
       }, 5000)
     }, timeout)
 
-    // Capture stdout
+    // Capture stdout (bounded preview + full for log)
     child.stdout?.on('data', (chunk) => {
-      stdout += chunk.toString()
+      const text = chunk.toString()
+      stdoutFull += text
+
+      if (stdoutPreview.length < STDOUT_PREVIEW_LIMIT) {
+        const remaining = STDOUT_PREVIEW_LIMIT - stdoutPreview.length
+        stdoutPreview += text.substring(0, remaining)
+        if (text.length > remaining) {
+          stdoutTruncated = true
+        }
+      } else {
+        stdoutTruncated = true
+      }
     })
 
-    // Capture stderr
+    // Capture stderr (bounded preview + full for log)
     child.stderr?.on('data', (chunk) => {
-      stderr += chunk.toString()
+      const text = chunk.toString()
+      stderrFull += text
+
+      if (stderrPreview.length < STDERR_PREVIEW_LIMIT) {
+        const remaining = STDERR_PREVIEW_LIMIT - stderrPreview.length
+        stderrPreview += text.substring(0, remaining)
+        if (text.length > remaining) {
+          stderrTruncated = true
+        }
+      } else {
+        stderrTruncated = true
+      }
     })
 
     // Handle completion
-    child.on('close', (exitCode, signal) => {
+    child.on('close', async (exitCode, signal) => {
       clearTimeout(timeoutHandle)
 
       const durationMs = Date.now() - startTime
 
+      // Write full logs to disk if paths available
+      if (stdoutLogPath && stdoutFull) {
+        try {
+          await writeFile(stdoutLogPath, stdoutFull, 'utf-8')
+        } catch (err) {
+          console.error('[Executor] Failed to write stdout log:', err)
+        }
+      }
+
+      if (stderrLogPath && stderrFull) {
+        try {
+          await writeFile(stderrLogPath, stderrFull, 'utf-8')
+        } catch (err) {
+          console.error('[Executor] Failed to write stderr log:', err)
+        }
+      }
+
       resolve({
         success: exitCode === 0 && !timedOut,
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
+        stdout: stdoutPreview.trim(),
+        stderr: stderrPreview.trim(),
         exitCode,
         signal,
         timedOut,
         durationMs,
+        stdoutTruncated,
+        stderrTruncated,
+        rawStdoutPath: stdoutLogPath,
+        rawStderrPath: stderrLogPath,
       })
     })
 
-    // Handle spawn errors (e.g., command not found)
+    // Handle spawn errors
     child.on('error', (err) => {
       clearTimeout(timeoutHandle)
 
@@ -85,6 +165,8 @@ export async function executeHermesAgent(
         signal: null,
         timedOut: false,
         durationMs: Date.now() - startTime,
+        stdoutTruncated: false,
+        stderrTruncated: false,
       })
     })
   })
@@ -92,10 +174,10 @@ export async function executeHermesAgent(
 
 /**
  * Execute Hermes Main planning phase
- * Returns parsed HermesPlan or null on failure
  */
 export async function executeHermesMainPlanning(
-  prompt: string
+  prompt: string,
+  taskId?: string
 ): Promise<{ plan: any; raw: string } | null> {
   const planningPrompt = `You are Hermes Main, the orchestrator. Given this user request, create a STRICT JSON execution plan.
 
@@ -122,7 +204,7 @@ Rules:
 - review runs last after implementation agents
 - Keep tasks specific and actionable`
 
-  const result = await executeHermesAgent('Main', planningPrompt)
+  const result = await executeHermesAgent('Main', planningPrompt, taskId)
 
   if (!result.success || !result.stdout) {
     console.error('[Hermes Main Planning] Failed:', result.stderr || 'No output')
@@ -131,7 +213,6 @@ Rules:
 
   // Try to parse JSON
   try {
-    // Strip markdown fences if present
     let jsonStr = result.stdout.trim()
     const fenceMatch = jsonStr.match(/```(?:json)?\s*\n([\s\S]*?)\n```/)
     if (fenceMatch) {
@@ -140,12 +221,10 @@ Rules:
 
     const plan = JSON.parse(jsonStr)
 
-    // Validate structure
     if (!plan.summary || !Array.isArray(plan.agents)) {
       throw new Error('Invalid plan structure')
     }
 
-    // Validate agent names
     const validAgents = ['research', 'backend', 'frontend', 'review']
     for (const step of plan.agents) {
       if (!validAgents.includes(step.agent)) {
@@ -157,6 +236,9 @@ Rules:
   } catch (err) {
     console.error('[Hermes Main Planning] JSON parse failed:', err)
     console.error('[Hermes Main Planning] Raw output:', result.stdout)
+    if (result.stdoutTruncated) {
+      console.error('[Hermes Main Planning] Output was truncated, check:', result.rawStdoutPath)
+    }
     return null
   }
 }
@@ -167,14 +249,17 @@ Rules:
 export async function executeHermesMainEvaluation(
   prompt: string,
   plan: any,
-  agentResults: Array<{ agent: string; result?: string; error?: string }>
+  agentResults: Array<{ agent: string; result?: string; error?: string }>,
+  taskId?: string
 ): Promise<{ evaluation: any; raw: string } | null> {
   const resultsText = agentResults
     .map((r) => {
       if (r.error) {
         return `${r.agent}: ERROR - ${r.error}`
       }
-      return `${r.agent}: ${r.result?.substring(0, 500) || 'No output'}`
+      // Limit result preview to 500 chars in evaluation prompt
+      const preview = r.result?.substring(0, 500) || 'No output'
+      return `${r.agent}: ${preview}${r.result && r.result.length > 500 ? '...' : ''}`
     })
     .join('\n\n')
 
@@ -203,7 +288,7 @@ Rules:
 - result should contain the actual deliverable or clear next steps
 - issues should list any problems found`
 
-  const result = await executeHermesAgent('Main', evalPrompt)
+  const result = await executeHermesAgent('Main', evalPrompt, taskId)
 
   if (!result.success || !result.stdout) {
     console.error('[Hermes Main Eval] Failed:', result.stderr || 'No output')
@@ -227,6 +312,9 @@ Rules:
   } catch (err) {
     console.error('[Hermes Main Eval] JSON parse failed:', err)
     console.error('[Hermes Main Eval] Raw output:', result.stdout)
+    if (result.stdoutTruncated) {
+      console.error('[Hermes Main Eval] Output was truncated, check:', result.rawStdoutPath)
+    }
     return null
   }
 }

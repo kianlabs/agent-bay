@@ -3,102 +3,90 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Seeding database (Developer Agents)...')
+  console.log('Seeding database...')
 
-  // Clear existing data
-  await prisma.event.deleteMany()
-  await prisma.agent.deleteMany()
-  await prisma.metrics.deleteMany()
-
-  // Create developer agents
-  const agents = await Promise.all([
-    prisma.agent.create({
-      data: {
-        name: 'Researcher',
-        color: '#3b82f6',
-        status: 'working',
-        currentTask: 'membaca spesifikasi API authentication',
-        tasksCompleted: 12,
-        tasksInQueue: 3,
-      },
-    }),
-    prisma.agent.create({
-      data: {
-        name: 'Frontend',
-        color: '#f59e0b',
-        status: 'working',
-        currentTask: 'menulis komponen Login dengan validation',
-        tasksCompleted: 24,
-        tasksInQueue: 5,
-      },
-    }),
-    prisma.agent.create({
-      data: {
-        name: 'Backend',
-        color: '#10b981',
-        status: 'working',
-        currentTask: 'refactor endpoint /api/auth dengan JWT',
-        tasksCompleted: 18,
-        tasksInQueue: 2,
-      },
-    }),
-    prisma.agent.create({
-      data: {
-        name: 'Review',
-        color: '#8b5cf6',
-        status: 'working',
-        currentTask: 'review PR #42 - Auth middleware',
-        tasksCompleted: 31,
-        tasksInQueue: 4,
-      },
-    }),
-  ])
-
-  console.log(`✅ Created ${agents.length} developer agents`)
-
-  // Create metrics
-  const metrics = await prisma.metrics.create({
-    data: {
-      tasksCompletedToday: 15,
-      tasksInProgress: 4,
-      prsReviewed: 7,
-      buildStatus: 'passing',
-      lastBuildTime: '2 min ago',
-      testsPassed: 142,
-      testsFailed: 3,
+  // Ensure all 5 agents exist (including Hermes Main)
+  const agents = [
+    {
+      name: 'Hermes Main',
+      color: '#9333EA', // Purple for orchestrator
+      status: 'idle',
+      currentTask: 'Waiting for task',
+      tasksCompleted: 0,
+      tasksInQueue: 0,
     },
-  })
+    {
+      name: 'Researcher',
+      color: '#3B82F6',
+      status: 'idle',
+      currentTask: 'Waiting for task',
+      tasksCompleted: 0,
+      tasksInQueue: 0,
+    },
+    {
+      name: 'Backend',
+      color: '#10B981',
+      status: 'idle',
+      currentTask: 'Waiting for task',
+      tasksCompleted: 0,
+      tasksInQueue: 0,
+    },
+    {
+      name: 'Frontend',
+      color: '#F59E0B',
+      status: 'idle',
+      currentTask: 'Waiting for task',
+      tasksCompleted: 0,
+      tasksInQueue: 0,
+    },
+    {
+      name: 'Review',
+      color: '#EF4444',
+      status: 'idle',
+      currentTask: 'Waiting for task',
+      tasksCompleted: 0,
+      tasksInQueue: 0,
+    },
+  ]
 
-  console.log('✅ Created metrics:', metrics)
+  for (const agentData of agents) {
+    const existing = await prisma.agent.findFirst({
+      where: { name: agentData.name },
+    })
 
-  // Create some events
-  await prisma.event.createMany({
-    data: [
-      {
-        agentId: agents[0].id,
-        message: 'membaca dokumentasi Auth0',
-        timestamp: new Date(Date.now() - 5000),
-      },
-      {
-        agentId: agents[1].id,
-        message: 'styling form login',
-        timestamp: new Date(Date.now() - 3000),
-      },
-      {
-        agentId: agents[3].id,
-        message: 'PR #42 approved ✓',
-        timestamp: new Date(),
-      },
-    ],
-  })
+    if (existing) {
+      console.log(`✓ Agent "${agentData.name}" already exists`)
+    } else {
+      await prisma.agent.create({ data: agentData })
+      console.log(`✓ Created agent "${agentData.name}"`)
+    }
+  }
 
-  console.log('✅ Created events')
-  console.log('🎉 Seeding complete!')
+  // Create metrics record if it doesn't exist
+  const metricsCount = await prisma.metrics.count()
+  if (metricsCount === 0) {
+    await prisma.metrics.create({
+      data: {
+        tasksCompletedToday: 0,
+        tasksInProgress: 0,
+        prsReviewed: 0,
+        buildStatus: 'passing',
+        lastBuildTime: 'never',
+        testsPassed: 0,
+        testsFailed: 0,
+      },
+    })
+    console.log('✓ Created metrics record')
+  } else {
+    console.log('✓ Metrics already exist')
+  }
+
+  console.log('✅ Seeding complete')
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding failed:', e)
+    console.error('Seeding error:', e)
     process.exit(1)
   })
   .finally(async () => {

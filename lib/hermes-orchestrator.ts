@@ -40,7 +40,7 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     // === PHASE 1: HERMES MAIN PLANNING ===
     console.log('[Orchestrator] Phase 1: Planning')
-    const planResult = await executeHermesMainPlanning(prompt)
+    const planResult = await executeHermesMainPlanning(prompt, taskId)
 
     if (!planResult) {
       console.log('[Orchestrator] Planning failed, falling back to keyword routing')
@@ -60,24 +60,49 @@ export async function orchestrateTask(taskId: string, prompt: string) {
       },
     })
 
-    // Create activity for planning (skip if no Main agent in DB)
-    try {
-      const mainAgent = await prisma.agent.findFirst({
-        where: { name: 'Main' },
+    // Create activity for planning
+    const mainAgentPlanning = await prisma.agent.findFirst({
+      where: { name: 'Hermes Main' },
+    })
+
+    if (mainAgentPlanning) {
+      await prisma.agent.update({
+        where: { id: mainAgentPlanning.id },
+        data: {
+          status: 'working',
+          currentTask: 'Planning task execution',
+        },
       })
-      
-      if (mainAgent) {
-        await prisma.activity.create({
-          data: {
-            agentId: mainAgent.id,
-            agentName: 'Main',
-            action: `created execution plan: ${plan.summary}`,
-            type: 'task-completed',
-          },
-        })
-      }
-    } catch (err) {
-      console.log('[Orchestrator] Skipping Main activity (no Main agent in DB)')
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentPlanning.id,
+        status: 'working',
+      })
+
+      await prisma.activity.create({
+        data: {
+          agentId: mainAgentPlanning.id,
+          agentName: 'Hermes Main',
+          action: `created execution plan: ${plan.summary}`,
+          type: 'task-completed',
+        },
+      })
+
+      // Set back to idle after planning
+      await prisma.agent.update({
+        where: { id: mainAgentPlanning.id },
+        data: {
+          status: 'idle',
+          currentTask: 'Waiting for task',
+        },
+      })
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentPlanning.id,
+        status: 'idle',
+      })
+    } else {
+      console.warn('[Orchestrator] Hermes Main agent not found in DB')
     }
 
     // === PHASE 2: EXECUTE AGENTS ===
@@ -87,6 +112,8 @@ export async function orchestrateTask(taskId: string, prompt: string) {
       result?: string
       error?: string
       durationMs: number
+      truncated?: boolean
+      logPath?: string
     }> = []
 
     // Simple sequential execution for now (TODO: parallel with dependencies)
@@ -147,8 +174,8 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
         console.log(`[Orchestrator] Executing ${agentName}: ${step.task}`)
 
-        // Execute agent
-        const result = await executeHermesAgent(agentName, step.task)
+        // Execute agent with taskId for logging
+        const result = await executeHermesAgent(agentName, step.task, taskId)
 
         if (result.success) {
           // Success
@@ -196,6 +223,8 @@ export async function orchestrateTask(taskId: string, prompt: string) {
             agent: step.agent,
             result: result.stdout,
             durationMs: result.durationMs,
+            truncated: result.stdoutTruncated,
+            logPath: result.rawStdoutPath,
           })
 
           console.log(
@@ -243,6 +272,8 @@ export async function orchestrateTask(taskId: string, prompt: string) {
             agent: step.agent,
             error: errorMsg,
             durationMs: result.durationMs,
+            truncated: result.stderrTruncated,
+            logPath: result.rawStderrPath,
           })
 
           console.error(`[Orchestrator] ${agentName} failed: ${errorMsg}`)
@@ -265,7 +296,8 @@ export async function orchestrateTask(taskId: string, prompt: string) {
     const evalResult = await executeHermesMainEvaluation(
       prompt,
       plan,
-      agentResults
+      agentResults,
+      taskId
     )
 
     if (!evalResult) {
@@ -285,25 +317,51 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     console.log('[Orchestrator] Evaluation:', JSON.stringify(evaluation, null, 2))
 
-    // Create activity for evaluation (skip if no Main agent in DB)
-    try {
-      const mainAgent = await prisma.agent.findFirst({
-        where: { name: 'Main' },
+    // Update Main agent status for evaluation
+    const mainAgentEval = await prisma.agent.findFirst({
+      where: { name: 'Hermes Main' },
+    })
+
+    if (mainAgentEval) {
+      await prisma.agent.update({
+        where: { id: mainAgentEval.id },
+        data: {
+          status: 'working',
+          currentTask: 'Evaluating results',
+        },
       })
-      
-      if (mainAgent) {
-        await prisma.activity.create({
-          data: {
-            agentId: mainAgent.id,
-            agentName: 'Main',
-            action: `evaluation: ${evaluation.status} - ${evaluation.summary}`,
-            type:
-              evaluation.status === 'completed' ? 'task-completed' : 'error',
-          },
-        })
-      }
-    } catch (err) {
-      console.log('[Orchestrator] Skipping Main eval activity (no Main agent in DB)')
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentEval.id,
+        status: 'working',
+      })
+
+      await prisma.activity.create({
+        data: {
+          agentId: mainAgentEval.id,
+          agentName: 'Hermes Main',
+          action: `evaluation: ${evaluation.status} - ${evaluation.summary}`,
+          type:
+            evaluation.status === 'completed' ? 'task-completed' : 'error',
+        },
+      })
+
+      // Set back to idle
+      await prisma.agent.update({
+        where: { id: mainAgentEval.id },
+        data: {
+          status: 'idle',
+          currentTask: 'Waiting for task',
+          tasksCompleted: { increment: 1 },
+        },
+      })
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentEval.id,
+        status: 'idle',
+      })
+    } else {
+      console.warn('[Orchestrator] Hermes Main agent not found in DB')
     }
 
     // Update task with final result
@@ -355,24 +413,20 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
     },
   })
 
-  // Activity for fallback (skip if no Main agent)
-  try {
-    const mainAgent = await prisma.agent.findFirst({
-      where: { name: 'Main' },
+  // Activity for fallback routing
+  const mainAgentFallback = await prisma.agent.findFirst({
+    where: { name: 'Hermes Main' },
+  })
+
+  if (mainAgentFallback) {
+    await prisma.activity.create({
+      data: {
+        agentId: mainAgentFallback.id,
+        agentName: 'Hermes Main',
+        action: `fallback routing: assigned to ${agentName}`,
+        type: 'task-completed',
+      },
     })
-    
-    if (mainAgent) {
-      await prisma.activity.create({
-        data: {
-          agentId: mainAgent.id,
-          agentName: 'Main',
-          action: `fallback routing: assigned to ${agentName}`,
-          type: 'task-completed',
-        },
-      })
-    }
-  } catch (err) {
-    console.log('[Orchestrator] Skipping fallback activity')
   }
 
   // Find agent
@@ -400,7 +454,7 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
       data: { status: 'working' },
     })
 
-    const result = await executeHermesAgent(agentName, prompt)
+    const result = await executeHermesAgent(agentName, prompt, taskId)
 
     if (result.success) {
       await prisma.agent.update({
