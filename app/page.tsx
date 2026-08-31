@@ -46,7 +46,7 @@ export default function Home() {
       console.log('Pusher state:', states.current)
     })
 
-    // Agent updated
+    // Agent updated - merge only provided fields
     channel.bind('agent-updated', (data: any) => {
       console.log('Agent updated:', data)
       setAgents((prev) =>
@@ -54,10 +54,10 @@ export default function Home() {
           agent.id === data.agentId
             ? {
                 ...agent,
-                status: data.status,
-                currentTask: data.currentTask,
-                tasksCompleted: data.tasksCompleted,
-                tasksInQueue: data.tasksInQueue,
+                ...(data.status !== undefined && { status: data.status }),
+                ...(data.currentTask !== undefined && { currentTask: data.currentTask }),
+                ...(data.tasksCompleted !== undefined && { tasksCompleted: data.tasksCompleted }),
+                ...(data.tasksInQueue !== undefined && { tasksInQueue: data.tasksInQueue }),
               }
             : agent
         )
