@@ -41,7 +41,7 @@ export async function GET() {
     return NextResponse.json({
       tasksCompletedToday: completedToday,
       tasksInProgress: inProgress,
-      prsReviewed: totalAgentTasks, // Total work done by all agents
+      prsReviewed: 0, // Not tracked yet - waiting for real PR data source
       buildStatus: 'unknown', // We don't track CI/CD yet
       lastBuildTime: 'unknown', // We don't track build times yet
       testsPassed: 0, // We don't run tests yet
