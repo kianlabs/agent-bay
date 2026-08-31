@@ -21,8 +21,8 @@ export default function FAB() {
   return (
     <>
       <button
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform"
-        style={{ background: 'var(--accent)' }}
+        className="fixed bottom-24 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform"
+        style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
         onClick={() => setIsModalOpen(true)}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

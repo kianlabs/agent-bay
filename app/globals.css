@@ -3,48 +3,77 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #fafafa;
-  --bg-surface: #ffffff;
-  --bg-surface-hover: #f5f5f5;
-  --border: #e0e0e0;
-  --text-primary: #212121;
-  --text-secondary: #757575;
-  --text-muted: #9e9e9e;
-  --accent: #10b981;
-  --accent-hover: #059669;
-  --status-running: #10b981;
-  --status-idle: #94a3b8;
-  --status-error: #ef4444;
-}
-
-.dark {
-  --bg-primary: #0f172a;
-  --bg-surface: #1e293b;
-  --bg-surface-hover: #334155;
-  --border: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
+  /* Soft Pastel Theme */
+  --bg-primary: #F8F9FC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #F3F4F8;
+  --bg-secondary: #F0F2F7;
+  
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  
+  --accent: #6366F1;
+  --accent-light: #818CF8;
+  --accent-bg: #EEF2FF;
+  
+  --border: #E5E7EB;
+  --border-light: #F3F4F6;
+  
+  --status-idle: #10B981;
+  --status-idle-bg: #D1FAE5;
+  --status-running: #F59E0B;
+  --status-running-bg: #FEF3C7;
+  --status-error: #EF4444;
+  --status-error-bg: #FEE2E2;
+  --status-pending: #8B5CF6;
+  --status-pending-bg: #EDE9FE;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
+html,
 body {
+  max-width: 100vw;
+  overflow-x: hidden;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  transition: background 0.2s, color 0.2s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.animate-pulse {
-  animation: pulse 2s infinite;
+/* Smooth transitions */
+button, a {
+  transition: all 0.2s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

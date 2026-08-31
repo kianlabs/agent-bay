@@ -38,137 +38,124 @@ export default function AnalyticsPage() {
     : 0
 
   return (
-    <main style={{ background: 'var(--bg-primary)', minHeight: '100vh', paddingBottom: '80px' }}>
+    <main style={{ background: '#F8F9FA', minHeight: '100vh', paddingBottom: '80px' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 px-4 py-4 border-b" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Analytics
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Performance metrics and insights
-          </p>
-        </div>
+      <header className="px-4 py-6 mb-4" style={{ background: 'white' }}>
+        <h1 className="text-2xl font-bold mb-1" style={{ color: '#1A1A1A' }}>
+          Analytics
+        </h1>
+        <p className="text-sm" style={{ color: '#666' }}>
+          Performance metrics and insights
+        </p>
       </header>
 
       {/* Metrics Cards */}
-      <section className="p-4">
-        <div className="grid grid-cols-2 gap-3 mb-6">
+      <section className="px-4 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           {/* Tasks Completed Today */}
           <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            className="p-4 rounded-2xl"
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Tasks Completed
+            <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#999' }}>
+              Completed
             </div>
             <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-3xl font-bold" style={{ color: '#1A1A1A' }}>
                 {metrics?.tasksCompletedToday || 0}
               </div>
-              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {metrics?.tasksInProgress || 0} in progress
+              <div className="text-sm" style={{ color: '#4CAF50' }}>
+                today
               </div>
+            </div>
+            <div className="text-xs mt-1" style={{ color: '#999' }}>
+              {metrics?.tasksInProgress || 0} in progress
             </div>
           </div>
 
           {/* Build Status */}
           <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            className="p-4 rounded-2xl shadow-sm"
+            style={{ background: 'white' }}
           >
-            <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Build Status
+            <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#999' }}>
+              Build
             </div>
-            <div className="flex items-baseline gap-2">
-              <div 
-                className="text-2xl font-bold capitalize"
-                style={{ 
-                  color: metrics?.buildStatus === 'passing' 
-                    ? 'var(--status-running)' 
-                    : 'var(--status-error)' 
-                }}
-              >
-                {metrics?.buildStatus || 'unknown'}
-              </div>
+            <div 
+              className="text-2xl font-bold capitalize mb-1"
+              style={{ 
+                color: metrics?.buildStatus === 'passing' ? '#4CAF50' : '#F44336'
+              }}
+            >
+              {metrics?.buildStatus || '—'}
             </div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+            <div className="text-xs" style={{ color: '#999' }}>
               {metrics?.lastBuildTime || 'N/A'}
             </div>
           </div>
 
           {/* Tests */}
           <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            className="p-4 rounded-2xl shadow-sm"
+            style={{ background: 'white' }}
           >
-            <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
+            <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#999' }}>
               Tests
             </div>
             <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                {metrics?.testsPassed || 0}/{testTotal}
-              </div>
-              <div 
-                className="text-sm font-semibold"
-                style={{ 
-                  color: testPercentage >= 95 
-                    ? 'var(--status-running)' 
-                    : 'var(--status-error)' 
-                }}
-              >
+              <div className="text-3xl font-bold" style={{ color: '#1A1A1A' }}>
                 {testPercentage}%
               </div>
+            </div>
+            <div className="text-xs mt-1" style={{ color: '#999' }}>
+              {metrics?.testsPassed || 0}/{testTotal} passing
             </div>
           </div>
 
           {/* PRs Reviewed */}
           <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            className="p-4 rounded-2xl shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
           >
-            <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
-              PRs Reviewed
+            <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              PRs
             </div>
             <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-3xl font-bold" style={{ color: 'white' }}>
                 {metrics?.prsReviewed || 0}
               </div>
             </div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-              today
+            <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              reviewed today
             </div>
-          </div>
-        </div>
-
-        {/* Charts */}
-        <div className="space-y-4">
-          {/* Task Completion Trend */}
-          <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-          >
-            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-              Task Completion (Last 7 Days)
-            </h3>
-            <MetricsChart type="completion" />
-          </div>
-
-          {/* Agent Performance */}
-          <div
-            className="p-4 rounded-xl border"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-          >
-            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-              Agent Performance
-            </h3>
-            <MetricsChart type="agent-performance" />
           </div>
         </div>
       </section>
 
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20"></div>
+      {/* Charts */}
+      <section className="px-4 space-y-4">
+        {/* Task Completion Trend */}
+        <div
+          className="p-4 rounded-2xl shadow-sm"
+          style={{ background: 'white' }}
+        >
+          <h3 className="text-sm font-semibold mb-3" style={{ color: '#1A1A1A' }}>
+            Completion Trend (7 Days)
+          </h3>
+          <MetricsChart type="completion" />
+        </div>
+
+        {/* Agent Performance */}
+        <div
+          className="p-4 rounded-2xl shadow-sm"
+          style={{ background: 'white' }}
+        >
+          <h3 className="text-sm font-semibold mb-3" style={{ color: '#1A1A1A' }}>
+            Agent Performance
+          </h3>
+          <MetricsChart type="agent-performance" />
+        </div>
+      </section>
     </main>
   )
 }

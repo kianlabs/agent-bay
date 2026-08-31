@@ -32,26 +32,31 @@ export default function TaskModal({ isOpen, onClose, onSubmit }: TaskModalProps)
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0, 0, 0, 0.7)' }}
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0, 0, 0, 0.4)' }}
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-lg rounded-2xl p-6 shadow-2xl"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+        className="w-full rounded-t-3xl p-6 shadow-2xl animate-slide-up"
+        style={{ background: 'white', maxHeight: '80vh' }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Handle bar */}
+        <div className="flex justify-center mb-4">
+          <div className="w-12 h-1 rounded-full" style={{ background: '#E0E0E0' }}></div>
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Create New Task
+          <h3 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+            New Task
           </h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-opacity-10 transition-colors"
-            style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: '#F5F5F5' }}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--text-secondary)' }}>
+            <svg className="w-5 h-5" fill="none" stroke="#666" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -63,23 +68,24 @@ export default function TaskModal({ isOpen, onClose, onSubmit }: TaskModalProps)
             <label 
               htmlFor="prompt" 
               className="block text-sm font-medium mb-2"
-              style={{ color: 'var(--text-secondary)' }}
+              style={{ color: '#666' }}
             >
-              Task Description
+              What do you want to build?
             </label>
             <textarea
               id="prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe what you want the agents to build..."
-              className="w-full px-4 py-3 rounded-xl border resize-none focus:outline-none focus:ring-2 transition-all"
+              placeholder="e.g. Create a responsive navbar with dropdown menu..."
+              className="w-full px-4 py-3 rounded-2xl border-2 resize-none focus:outline-none transition-all"
               style={{ 
-                background: 'var(--bg-primary)', 
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)',
+                background: '#F8F9FA', 
+                borderColor: prompt ? '#667eea' : '#E0E0E0',
+                color: '#1A1A1A',
               }}
               rows={5}
               disabled={isSubmitting}
+              autoFocus
             />
           </div>
 
@@ -88,10 +94,10 @@ export default function TaskModal({ isOpen, onClose, onSubmit }: TaskModalProps)
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-xl font-medium transition-colors"
+              className="flex-1 px-4 py-3 rounded-2xl font-medium transition-colors"
               style={{ 
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: 'var(--text-secondary)'
+                background: '#F5F5F5',
+                color: '#666'
               }}
               disabled={isSubmitting}
             >
@@ -99,9 +105,9 @@ export default function TaskModal({ isOpen, onClose, onSubmit }: TaskModalProps)
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 rounded-xl font-medium transition-all hover:opacity-90 disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-2xl font-medium transition-all disabled:opacity-50"
               style={{ 
-                background: 'var(--accent)',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white'
               }}
               disabled={!prompt.trim() || isSubmitting}
