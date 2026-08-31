@@ -7,7 +7,9 @@ export async function GET() {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-    const [completedToday, inProgress] = await Promise.all([
+    const CORE_WORKERS = ['Researcher', 'Backend', 'Frontend', 'Review']
+
+    const [completedToday, inProgress, workingAgents, errorToday] = await Promise.all([
       // Tasks completed today
       prisma.task.count({
         where: {
@@ -26,17 +28,33 @@ export async function GET() {
           }
         }
       }),
+
+      // Core workers currently working
+      prisma.agent.count({
+        where: {
+          name: { in: CORE_WORKERS },
+          status: 'working'
+        }
+      }),
+
+      // Tasks with errors today
+      prisma.task.count({
+        where: {
+          status: 'error',
+          completedAt: {
+            gte: todayStart
+          }
+        }
+      }),
     ])
 
-    // Return real metrics with honest values
+    // Return real metrics for dashboard
     return NextResponse.json({
       tasksCompletedToday: completedToday,
       tasksInProgress: inProgress,
-      prsReviewed: 0, // Not tracked yet - waiting for real PR data source
-      buildStatus: 'unknown', // We don't track CI/CD yet
-      lastBuildTime: 'unknown', // We don't track build times yet
-      testsPassed: 0, // We don't run tests yet
-      testsFailed: 0, // We don't run tests yet
+      agentsWorking: workingAgents,
+      totalWorkers: CORE_WORKERS.length,
+      taskErrors: errorToday,
     })
   } catch (error) {
     console.error('Error fetching metrics:', error)

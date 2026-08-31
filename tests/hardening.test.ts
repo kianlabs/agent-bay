@@ -20,6 +20,10 @@ describe('Real Data Hardening', () => {
   })
 
   afterAll(async () => {
+    // Cleanup test data
+    await prisma.agent.deleteMany({
+      where: { id: 'test-agent-1' }
+    })
     await prisma.$disconnect()
   })
 
