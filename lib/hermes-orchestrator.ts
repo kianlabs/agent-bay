@@ -40,9 +40,61 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     // === PHASE 1: HERMES MAIN PLANNING ===
     console.log('[Orchestrator] Phase 1: Planning')
+
+    // Hermes Main must be marked working BEFORE the real Hermes process starts.
+    const mainAgentBeforePlanning = await prisma.agent.findFirst({
+      where: { name: 'Hermes Main' },
+    })
+
+    if (mainAgentBeforePlanning) {
+      await prisma.agent.update({
+        where: { id: mainAgentBeforePlanning.id },
+        data: {
+          status: 'working',
+          currentTask: 'Analyzing task',
+          lastError: null,
+          errorDetails: null,
+          errorTimestamp: null,
+        },
+      })
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentBeforePlanning.id,
+        status: 'working',
+        currentTask: 'Analyzing task',
+      })
+
+      await prisma.activity.create({
+        data: {
+          agentId: mainAgentBeforePlanning.id,
+          agentName: 'Hermes Main',
+          action: 'analyzing prompt',
+          type: 'task-completed',
+        },
+      })
+    }
+
     const planResult = await executeHermesMainPlanning(prompt, taskId)
 
     if (!planResult) {
+      if (mainAgentBeforePlanning) {
+        await prisma.agent.update({
+          where: { id: mainAgentBeforePlanning.id },
+          data: {
+            status: 'error',
+            currentTask: 'Planning failed',
+            lastError: 'Hermes Main planning failed',
+            errorTimestamp: new Date(),
+          },
+        })
+
+        await pusherServer.trigger('agent-ops', 'agent-updated', {
+          agentId: mainAgentBeforePlanning.id,
+          status: 'error',
+          currentTask: 'Planning failed',
+        })
+      }
+
       console.log('[Orchestrator] Planning failed, falling back to keyword routing')
       await fallbackToKeywordRouting(taskId, prompt)
       return
@@ -66,19 +118,6 @@ export async function orchestrateTask(taskId: string, prompt: string) {
     })
 
     if (mainAgentPlanning) {
-      await prisma.agent.update({
-        where: { id: mainAgentPlanning.id },
-        data: {
-          status: 'working',
-          currentTask: 'Planning task execution',
-        },
-      })
-
-      await pusherServer.trigger('agent-ops', 'agent-updated', {
-        agentId: mainAgentPlanning.id,
-        status: 'working',
-      })
-
       await prisma.activity.create({
         data: {
           agentId: mainAgentPlanning.id,
@@ -293,6 +332,40 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     // === PHASE 3: HERMES MAIN EVALUATION ===
     console.log('[Orchestrator] Phase 3: Evaluation')
+
+    // Hermes Main must be marked working BEFORE evaluation starts.
+    const mainAgentBeforeEval = await prisma.agent.findFirst({
+      where: { name: 'Hermes Main' },
+    })
+
+    if (mainAgentBeforeEval) {
+      await prisma.agent.update({
+        where: { id: mainAgentBeforeEval.id },
+        data: {
+          status: 'working',
+          currentTask: 'Evaluating results',
+          lastError: null,
+          errorDetails: null,
+          errorTimestamp: null,
+        },
+      })
+
+      await pusherServer.trigger('agent-ops', 'agent-updated', {
+        agentId: mainAgentBeforeEval.id,
+        status: 'working',
+        currentTask: 'Evaluating results',
+      })
+
+      await prisma.activity.create({
+        data: {
+          agentId: mainAgentBeforeEval.id,
+          agentName: 'Hermes Main',
+          action: 'evaluating agent results',
+          type: 'task-completed',
+        },
+      })
+    }
+
     const evalResult = await executeHermesMainEvaluation(
       prompt,
       plan,
@@ -302,6 +375,25 @@ export async function orchestrateTask(taskId: string, prompt: string) {
 
     if (!evalResult) {
       console.error('[Orchestrator] Evaluation failed')
+
+      if (mainAgentBeforeEval) {
+        await prisma.agent.update({
+          where: { id: mainAgentBeforeEval.id },
+          data: {
+            status: 'error',
+            currentTask: 'Evaluation failed',
+            lastError: 'Hermes Main evaluation failed',
+            errorTimestamp: new Date(),
+          },
+        })
+
+        await pusherServer.trigger('agent-ops', 'agent-updated', {
+          agentId: mainAgentBeforeEval.id,
+          status: 'error',
+          currentTask: 'Evaluation failed',
+        })
+      }
+
       await prisma.task.update({
         where: { id: taskId },
         data: {
@@ -323,19 +415,6 @@ export async function orchestrateTask(taskId: string, prompt: string) {
     })
 
     if (mainAgentEval) {
-      await prisma.agent.update({
-        where: { id: mainAgentEval.id },
-        data: {
-          status: 'working',
-          currentTask: 'Evaluating results',
-        },
-      })
-
-      await pusherServer.trigger('agent-ops', 'agent-updated', {
-        agentId: mainAgentEval.id,
-        status: 'working',
-      })
-
       await prisma.activity.create({
         data: {
           agentId: mainAgentEval.id,

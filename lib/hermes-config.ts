@@ -21,6 +21,11 @@ export const AGENT_PROFILES = {
   Review: 'hermes-review',
 } as const
 
+// Optional global model override.
+// When unset, every Hermes profile uses its own configured model.
+export const HERMES_MODEL_OVERRIDE =
+  process.env.HERMES_MODEL_OVERRIDE?.trim() || null
+
 // Max concurrent worker executions (Main not counted)
 export const MAX_CONCURRENT_WORKERS = parseInt(
   process.env.HERMES_MAX_CONCURRENT || '4',

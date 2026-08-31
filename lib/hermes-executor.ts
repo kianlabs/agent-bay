@@ -1,9 +1,13 @@
 import { spawn } from 'child_process'
-import { writeFile, mkdir } from 'fs/promises'
+import { createWriteStream, type WriteStream } from 'fs'
+import { mkdir } from 'fs/promises'
+import { finished } from 'stream/promises'
 import { join } from 'path'
 import {
   AGENT_PROFILES,
+  AGENT_TIMEOUTS,
   getTimeoutForAgent,
+  HERMES_MODEL_OVERRIDE,
   HermesExecutionResult,
 } from './hermes-config'
 
@@ -29,7 +33,8 @@ async function ensureLogDir(taskId: string): Promise<string> {
 export async function executeHermesAgent(
   agentName: string,
   prompt: string,
-  taskId?: string
+  taskId?: string,
+  timeoutOverride?: number
 ): Promise<HermesExecutionResult> {
   const profile = AGENT_PROFILES[agentName as keyof typeof AGENT_PROFILES]
 
@@ -37,7 +42,7 @@ export async function executeHermesAgent(
     throw new Error(`No profile mapping for agent: ${agentName}`)
   }
 
-  const timeout = getTimeoutForAgent(agentName)
+  const timeout = timeoutOverride ?? getTimeoutForAgent(agentName)
   const startTime = Date.now()
   const timestamp = Date.now()
 
@@ -45,12 +50,17 @@ export async function executeHermesAgent(
   let logDir: string | undefined
   let stdoutLogPath: string | undefined
   let stderrLogPath: string | undefined
+  let stdoutLogStream: WriteStream | undefined
+  let stderrLogStream: WriteStream | undefined
 
   if (taskId) {
     try {
       logDir = await ensureLogDir(taskId)
       stdoutLogPath = join(logDir, `${agentName.toLowerCase()}_${timestamp}.stdout.log`)
       stderrLogPath = join(logDir, `${agentName.toLowerCase()}_${timestamp}.stderr.log`)
+
+      stdoutLogStream = createWriteStream(stdoutLogPath)
+      stderrLogStream = createWriteStream(stderrLogPath)
     } catch (err) {
       console.error(`[Executor] Failed to create log dir for task ${taskId}:`, err)
       // Continue without logging to disk
@@ -60,14 +70,20 @@ export async function executeHermesAgent(
   return new Promise((resolve) => {
     let stdoutPreview = ''
     let stderrPreview = ''
-    let stdoutFull = ''
-    let stderrFull = ''
     let stdoutTruncated = false
     let stderrTruncated = false
     let timedOut = false
 
-    // Spawn Hermes process
-    const child = spawn(profile, ['-z', prompt, '--model', 'kr/auto'], {
+    // Spawn Hermes process.
+    // By default each profile uses its own configured model.
+    // HERMES_MODEL_OVERRIDE can optionally override the model globally.
+    const args = ['-z', prompt]
+
+    if (HERMES_MODEL_OVERRIDE) {
+      args.push('--model', HERMES_MODEL_OVERRIDE)
+    }
+
+    const child = spawn(profile, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -86,7 +102,7 @@ export async function executeHermesAgent(
     // Capture stdout (bounded preview + full for log)
     child.stdout?.on('data', (chunk) => {
       const text = chunk.toString()
-      stdoutFull += text
+      stdoutLogStream?.write(chunk)
 
       if (stdoutPreview.length < STDOUT_PREVIEW_LIMIT) {
         const remaining = STDOUT_PREVIEW_LIMIT - stdoutPreview.length
@@ -102,7 +118,7 @@ export async function executeHermesAgent(
     // Capture stderr (bounded preview + full for log)
     child.stderr?.on('data', (chunk) => {
       const text = chunk.toString()
-      stderrFull += text
+      stderrLogStream?.write(chunk)
 
       if (stderrPreview.length < STDERR_PREVIEW_LIMIT) {
         const remaining = STDERR_PREVIEW_LIMIT - stderrPreview.length
@@ -121,20 +137,24 @@ export async function executeHermesAgent(
 
       const durationMs = Date.now() - startTime
 
-      // Write full logs to disk if paths available
-      if (stdoutLogPath && stdoutFull) {
-        try {
-          await writeFile(stdoutLogPath, stdoutFull, 'utf-8')
-        } catch (err) {
-          console.error('[Executor] Failed to write stdout log:', err)
-        }
+      // Flush streamed log output to disk.
+      const flushes: Promise<void>[] = []
+
+      if (stdoutLogStream) {
+        stdoutLogStream.end()
+        flushes.push(finished(stdoutLogStream).then(() => undefined))
       }
 
-      if (stderrLogPath && stderrFull) {
+      if (stderrLogStream) {
+        stderrLogStream.end()
+        flushes.push(finished(stderrLogStream).then(() => undefined))
+      }
+
+      if (flushes.length > 0) {
         try {
-          await writeFile(stderrLogPath, stderrFull, 'utf-8')
+          await Promise.all(flushes)
         } catch (err) {
-          console.error('[Executor] Failed to write stderr log:', err)
+          console.error('[Executor] Failed to flush Hermes logs:', err)
         }
       }
 
@@ -156,6 +176,9 @@ export async function executeHermesAgent(
     // Handle spawn errors
     child.on('error', (err) => {
       clearTimeout(timeoutHandle)
+
+      stdoutLogStream?.end()
+      stderrLogStream?.end()
 
       resolve({
         success: false,
@@ -204,7 +227,12 @@ Rules:
 - review runs last after implementation agents
 - Keep tasks specific and actionable`
 
-  const result = await executeHermesAgent('Main', planningPrompt, taskId)
+  const result = await executeHermesAgent(
+    'Main',
+    planningPrompt,
+    taskId,
+    AGENT_TIMEOUTS.mainPlanning
+  )
 
   if (!result.success || !result.stdout) {
     console.error('[Hermes Main Planning] Failed:', result.stderr || 'No output')
@@ -288,7 +316,12 @@ Rules:
 - result should contain the actual deliverable or clear next steps
 - issues should list any problems found`
 
-  const result = await executeHermesAgent('Main', evalPrompt, taskId)
+  const result = await executeHermesAgent(
+    'Main',
+    evalPrompt,
+    taskId,
+    AGENT_TIMEOUTS.mainEvaluation
+  )
 
   if (!result.success || !result.stdout) {
     console.error('[Hermes Main Eval] Failed:', result.stderr || 'No output')
