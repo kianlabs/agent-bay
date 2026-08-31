@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { initializeRecovery } from '@/lib/recovery-bootstrap'
+
+// Initialize recovery on first API call
+initializeRecovery().catch((err) => {
+  console.error('[Metrics API] Recovery initialization failed:', err)
+})
 
 export async function GET() {
   try {
