@@ -7,7 +7,7 @@ export async function GET() {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-    const [completedToday, inProgress, allAgents] = await Promise.all([
+    const [completedToday, inProgress] = await Promise.all([
       // Tasks completed today
       prisma.task.count({
         where: {
@@ -26,16 +26,7 @@ export async function GET() {
           }
         }
       }),
-      
-      // Sum of all agent tasks completed
-      prisma.agent.findMany({
-        select: {
-          tasksCompleted: true
-        }
-      })
     ])
-
-    const totalAgentTasks = allAgents.reduce((sum, agent) => sum + agent.tasksCompleted, 0)
 
     // Return real metrics with honest values
     return NextResponse.json({
