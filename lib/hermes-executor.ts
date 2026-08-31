@@ -61,6 +61,16 @@ export async function executeHermesAgent(
 
       stdoutLogStream = createWriteStream(stdoutLogPath)
       stderrLogStream = createWriteStream(stderrLogPath)
+
+      stdoutLogStream.on('error', (err) => {
+        console.error('[Executor] stdout log stream error:', err)
+        stdoutLogStream = undefined
+      })
+
+      stderrLogStream.on('error', (err) => {
+        console.error('[Executor] stderr log stream error:', err)
+        stderrLogStream = undefined
+      })
     } catch (err) {
       console.error(`[Executor] Failed to create log dir for task ${taskId}:`, err)
       // Continue without logging to disk
@@ -73,6 +83,7 @@ export async function executeHermesAgent(
     let stdoutTruncated = false
     let stderrTruncated = false
     let timedOut = false
+    let processClosed = false
 
     // Spawn Hermes process.
     // By default each profile uses its own configured model.
@@ -93,7 +104,7 @@ export async function executeHermesAgent(
       child.kill('SIGTERM')
 
       setTimeout(() => {
-        if (!child.killed) {
+        if (!processClosed) {
           child.kill('SIGKILL')
         }
       }, 5000)
@@ -133,6 +144,7 @@ export async function executeHermesAgent(
 
     // Handle completion
     child.on('close', async (exitCode, signal) => {
+      processClosed = true
       clearTimeout(timeoutHandle)
 
       const durationMs = Date.now() - startTime
