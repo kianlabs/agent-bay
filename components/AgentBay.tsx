@@ -1,3 +1,5 @@
+import ActivityTimeline from './ActivityTimeline'
+
 interface Agent {
   id: string
   name: string
@@ -44,9 +46,12 @@ export default function AgentBay({
           {workingAgents} of {agents.length} developers actively coding
         </p>
 
-        {/* 3D Scene */}
+        {/* Activity Timeline - Replaces 3D Scene */}
         <div className="mb-4">
-          <AgentScene agents={agents} speechBubbles={speechBubbles} />
+          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
+            Recent Activity
+          </h3>
+          <ActivityTimeline />
         </div>
 
         {/* Agent Cards Grid (Fallback/Summary) */}
@@ -95,7 +100,3 @@ export default function AgentBay({
     </section>
   )
 }
-
-// Lazy load 3D scene
-import dynamic from 'next/dynamic'
-const AgentScene = dynamic(() => import('./AgentScene'), { ssr: false })

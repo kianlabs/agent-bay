@@ -8,16 +8,26 @@ datasource db {
 }
 
 model Agent {
-  id              String   @id @default(cuid())
-  name            String   // Researcher | Frontend | Backend | Review
+  id              String    @id @default(cuid())
+  name            String
   color           String
-  status          String   @default("idle") // idle | working | error
-  currentTask     String   @default("waiting for tasks") // Task description
-  tasksCompleted  Int      @default(0)
-  tasksInQueue    Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status          String    @default("idle")
+  currentTask     String
+  tasksCompleted  Int       @default(0)
+  tasksInQueue    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Tier 1: Error handling
+  lastError       String?
+  errorDetails    String?
+  errorTimestamp  DateTime?
+  maxCapacity     Int       @default(20)
+  
+  // Relations
   events          Event[]
+  activities      Activity[]
+  errorLogs       ErrorLog[]
 }
 
 model Metrics {
@@ -40,4 +50,36 @@ model Event {
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
   
   @@index([agentId])
+}
+
+// Tier 1: Activity Timeline
+model Activity {
+  id        String   @id @default(cuid())
+  agentId   String
+  agentName String
+  action    String
+  type      String   // 'task-completed' | 'error' | 'deployment' | 'pr-reviewed' | 'test-run'
+  metadata  String?  // JSON string
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([timestamp])
+  @@index([agentId])
+}
+
+// Tier 1: Error Logging
+model ErrorLog {
+  id         String    @id @default(cuid())
+  agentId    String
+  message    String
+  details    String
+  stack      String?
+  resolved   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  agent      Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+  @@index([createdAt])
 }

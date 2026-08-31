@@ -4,7 +4,22 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const agents = await prisma.agent.findMany({
-      orderBy: { createdAt: 'asc' },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        status: true,
+        currentTask: true,
+        tasksCompleted: true,
+        tasksInQueue: true,
+        lastError: true,
+        errorDetails: true,
+        errorTimestamp: true,
+        maxCapacity: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     })
 
     return NextResponse.json(agents)

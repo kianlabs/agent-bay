@@ -55,6 +55,17 @@ export async function GET() {
     const taskDelta = Math.random() < 0.3 ? 1 : 0 // 30% chance complete task
     const queueDelta = Math.random() < 0.2 ? Math.floor(Math.random() * 3) - 1 : 0
 
+    // Set error details if status becomes 'error'
+    const errorData = newStatus === 'error' ? {
+      lastError: `Failed to ${newTask.toLowerCase()}`,
+      errorDetails: `Error occurred at ${new Date().toISOString()}\nStack trace:\n  at processTask()\n  at executeAgent()`,
+      errorTimestamp: new Date(),
+    } : {
+      lastError: null,
+      errorDetails: null,
+      errorTimestamp: null,
+    }
+
     // Update agent
     const updated = await prisma.agent.update({
       where: { id: randomAgent.id },
@@ -63,6 +74,7 @@ export async function GET() {
         currentTask: newTask,
         tasksCompleted: randomAgent.tasksCompleted + taskDelta,
         tasksInQueue: Math.max(0, randomAgent.tasksInQueue + queueDelta),
+        ...errorData,
       },
     })
 

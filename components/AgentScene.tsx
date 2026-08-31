@@ -124,7 +124,7 @@ export default function AgentScene({ agents, speechBubbles }: AgentSceneProps) {
           })}
 
           {/* Office Decorations - lounge, sofas, rugs, filing cabinets */}
-          <OfficeDecor deskPositions={DESK_POSITIONS} agents={agents} />
+          <OfficeDecor deskPositions={DESK_POSITIONS as [number, number, number][]} agents={agents} />
 
           {/* Short walls (TRANSPARENT for debugging) */}
           <ShortWalls />
