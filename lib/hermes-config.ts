@@ -54,12 +54,15 @@ export function getTimeoutForAgent(agentName: string): number {
 export type ValidAgentName = 'research' | 'backend' | 'frontend' | 'review'
 
 // Planning schema from Hermes Main
+// PRESERVES backward compatibility: legacy plans may omit id / dependsOn entirely.
+// New planner output provides stable step IDs and step-ID based dependsOn.
 export interface HermesPlan {
   summary: string
   agents: Array<{
+    id?: string // stable step ID (new format)
     agent: ValidAgentName
     task: string
-    dependsOn: ValidAgentName[]
+    dependsOn?: string[] // step IDs (new) or agent names (legacy)
   }>
 }
 

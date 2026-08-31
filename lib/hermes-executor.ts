@@ -228,15 +228,23 @@ Output ONLY valid JSON with this structure (no markdown, no explanation):
 {
   "summary": "Brief task summary",
   "agents": [
-    {"agent": "research|backend|frontend|review", "task": "Specific instruction", "dependsOn": []}
+    {
+      "id": "stable-unique-id",
+      "agent": "research|backend|frontend|review",
+      "task": "Specific instruction",
+      "dependsOn": []
+    }
   ]
 }
 
 Rules:
 - Only use agents that are needed
-- dependsOn references previous agent names in the plan
+- Each agent entry MUST have a stable, unique "id" string (e.g. "research-context", "backend-api", "frontend-ui")
+- "dependsOn" MUST be an array of OTHER step "id" strings that this step needs completed first
+- Use empty array "dependsOn": [] for steps with no dependencies
 - research runs first if needed
 - review runs last after implementation agents
+- Parallelizable independent steps should have empty dependsOn so they run concurrently
 - Keep tasks specific and actionable`
 
   const result = await executeHermesAgent(
