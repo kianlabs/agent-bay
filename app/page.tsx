@@ -89,6 +89,30 @@ export default function Home() {
       }, 4000)
     })
 
+    // Listen for agent errors
+    channel.bind('agent-error', (data: any) => {
+      console.log('Agent error received:', data)
+      setAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === data.agentId
+            ? {
+                ...agent,
+                status: 'error',
+                lastError: data.message,
+                errorDetails: data.details,
+                errorTimestamp: new Date(data.timestamp),
+              }
+            : agent
+        )
+      )
+    })
+
+    // Listen for new activities (for real-time timeline)
+    channel.bind('activity-created', (data: any) => {
+      console.log('New activity:', data)
+      // Activity timeline will auto-refresh via Pusher
+    })
+
     // Cleanup
     return () => {
       channel.unbind_all()

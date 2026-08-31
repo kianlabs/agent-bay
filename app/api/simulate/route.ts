@@ -87,31 +87,60 @@ export async function GET() {
       tasksInQueue: updated.tasksInQueue,
     })
 
-    // Random speech bubble (25% chance)
-    if (Math.random() < 0.25) {
-      const messagesByRole: Record<string, string[]> = {
-        Researcher: ['interesting! 🤔', 'dokumentasi lengkap ✓', 'noted!'],
-        Frontend: ['styling done! ✨', 'UI looks good 👍', 'responsive ✓'],
-        Backend: ['endpoint ready ✓', 'optimized! 🚀', 'migration done'],
-        Review: ['PR approved ✓', 'looks good! 👍', 'LGTM ✅'],
-      }
-      
-      const messagesForRole = messagesByRole[updated.name] || ['working...']
-      const message = messagesForRole[Math.floor(Math.random() * messagesForRole.length)]
-      
-      await prisma.event.create({
-        data: {
-          agentId: updated.id,
-          message,
-        },
-      })
-
-      await pusherServer.trigger('agent-ops', 'new-message', {
-        agentId: updated.id,
-        message,
-        timestamp: new Date(),
-      })
+    // Add error event if status = error
+  if (newStatus === 'error') {
+    await pusherServer.trigger('agent-ops', 'agent-error', {
+    agentId: updated.id,
+    agentName: updated.name,
+    message: updated.lastError,
+    details: updated.errorDetails,
+    timestamp: updated.errorTimestamp,
+    })
     }
+
+    if (Math.random() < 0.25) {
+  const messagesByRole: Record<string, string[]> = {
+    Researcher: ['interesting! 🤔', 'dokumentasi lengkap ✓', 'noted!'],
+    Frontend: ['styling done! ✨', 'UI looks good 👍', 'responsive ✓'],
+    Backend: ['endpoint ready ✓', 'optimized! 🚀', 'migration done'],
+    Review: ['PR approved ✓', 'looks good! 👍', 'LGTM ✅'],
+  }
+  
+  const messagesForRole = messagesByRole[updated.name] || ['working...']
+  const message = messagesForRole[Math.floor(Math.random() * messagesForRole.length)]
+
+  const activity = await prisma.activity.create({
+    data: {
+      agentId: updated.id,
+      agentName: updated.name,
+      action: newStatus === 'error' 
+        ? `failed: ${updated.lastError}`
+        : `completed: ${updated.currentTask}`,
+      type: newStatus === 'error' ? 'error' : 'task-completed',
+      metadata: JSON.stringify({
+        tasksBefore: randomAgent.tasksInQueue,
+        tasksAfter: updated.tasksInQueue,
+        status: newStatus,
+      }),
+    },
+  })
+
+  // 👇 ADD THESE 2 PUSHER TRIGGERS:
+  await pusherServer.trigger('agent-ops', 'activity-created', {
+    id: activity.id,
+    agentId: activity.agentId,
+    agentName: activity.agentName,
+    action: activity.action,
+    type: activity.type,
+    timestamp: activity.timestamp,
+  })
+
+  await pusherServer.trigger('agent-ops', 'new-message', {
+    agentId: updated.id,
+    message,
+    timestamp: new Date(),
+  })
+}
 
     // Update metrics (20% chance)
     if (Math.random() < 0.2) {
