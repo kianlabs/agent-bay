@@ -1,205 +1,145 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Pusher from 'pusher-js'
 
 interface Agent {
   id: string
   name: string
+  color: string
   status: 'idle' | 'working' | 'error'
   currentTask: string
-}
-
-interface Task {
-  id: string
-  status: 'pending' | 'planning' | 'running' | 'completed' | 'error'
-}
-
-interface PipelineStats {
-  activeAgents: number
-  totalAgents: number
-  pendingTasks: number
-  runningTasks: number
-  completedToday: number
-  errorTasks: number
+  tasksCompleted: number
+  tasksInQueue: number
+  lastError?: string
 }
 
 export default function HomePage() {
   const [agents, setAgents] = useState<Agent[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [stats, setStats] = useState<PipelineStats>({
-    activeAgents: 0,
-    totalAgents: 0,
-    pendingTasks: 0,
-    runningTasks: 0,
-    completedToday: 0,
-    errorTasks: 0
-  })
+  const [liveCount, setLiveCount] = useState(0)
 
   useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 5000)
-    return () => clearInterval(interval)
+    fetchAgents()
+    const interval = setInterval(fetchAgents, 5000)
+    
+    // Pusher setup
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1'
+    })
+    
+    const channel = pusher.subscribe('agent-bay')
+    
+    channel.bind('agent-updated', (data: any) => {
+      setAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === data.agentId
+            ? { ...agent, ...data }
+            : agent
+        )
+      )
+    })
+    
+    return () => {
+      clearInterval(interval)
+      pusher.unsubscribe('agent-bay')
+    }
   }, [])
 
-  const fetchData = async () => {
+  const fetchAgents = async () => {
     try {
-      const [agentsRes, tasksRes] = await Promise.all([
-        fetch('/api/agents'),
-        fetch('/api/tasks')
-      ])
-      
-      const agentsData = await agentsRes.json()
-      const tasksData = await tasksRes.json()
-      
-      setAgents(agentsData)
-      setTasks(tasksData)
-      
-      // Calculate stats
-      const activeAgents = agentsData.filter((a: Agent) => a.status === 'working').length
-      const pendingTasks = tasksData.filter((t: Task) => t.status === 'pending' || t.status === 'planning').length
-      const runningTasks = tasksData.filter((t: Task) => t.status === 'running').length
-      const completedToday = tasksData.filter((t: Task) => t.status === 'completed').length
-      const errorTasks = tasksData.filter((t: Task) => t.status === 'error').length
-      
-      setStats({
-        activeAgents,
-        totalAgents: agentsData.length,
-        pendingTasks,
-        runningTasks,
-        completedToday,
-        errorTasks
-      })
+      const res = await fetch('/api/agents')
+      const data = await res.json()
+      setAgents(data)
+      setLiveCount(data.filter((a: Agent) => a.status === 'working').length)
     } catch (error) {
-      console.error('Failed to fetch data:', error)
+      console.error('Failed to fetch agents:', error)
     }
   }
 
-  const getAgentStatusColor = (status: string) => {
-    switch (status) {
-      case 'working': return 'var(--status-running)'
-      case 'error': return 'var(--status-error)'
-      default: return 'var(--status-idle)'
+  const getAgentColor = (name: string) => {
+    const colors: Record<string, string> = {
+      'Researcher': 'var(--agent-researcher)',
+      'Backend': 'var(--agent-backend)',
+      'Frontend': 'var(--agent-frontend)',
+      'Review': 'var(--agent-review)',
+      'Hermes Main': 'var(--agent-main)'
     }
+    return colors[name] || 'var(--accent)'
   }
 
   return (
     <main style={{ background: 'var(--bg-primary)', minHeight: '100vh', paddingBottom: '80px' }}>
       {/* Header */}
-      <header className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          Agent Bay
-        </h1>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          AI Development Pipeline
-        </p>
+      <header className="px-4 pt-6 pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+              style={{ background: 'var(--accent)' }}
+            >
+              AO
+            </div>
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+              style={{ background: '#6c5ce7' }}
+            >
+              KN
+            </div>
+          </div>
+          <div 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+            style={{ background: 'var(--status-running-bg)' }}
+          >
+            <div 
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ background: 'var(--status-running)' }}
+            ></div>
+            <span className="text-sm font-semibold" style={{ color: 'var(--status-running)' }}>
+              Live
+            </span>
+          </div>
+        </div>
+        
+        <button className="relative">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--text-secondary)' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          {liveCount > 0 && (
+            <div 
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: 'var(--status-error)' }}
+            >
+              {liveCount}
+            </div>
+          )}
+        </button>
       </header>
 
-      {/* Pipeline Overview Cards */}
+      {/* Agent Grid - Top Section */}
       <section className="px-4 mb-6">
         <div className="grid grid-cols-2 gap-3">
-          {/* Active Pipeline */}
-          <div
-            className="p-4 rounded-2xl"
-            style={{ 
-              background: 'var(--bg-surface)', 
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <div 
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ background: 'var(--status-running)' }}
-              ></div>
-              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                In Pipeline
-              </span>
-            </div>
-            <div className="text-4xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-              {stats.pendingTasks + stats.runningTasks}
-            </div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {stats.runningTasks} running
-            </div>
-          </div>
-
-          {/* Completed Today */}
-          <div
-            className="p-4 rounded-2xl"
-            style={{ 
-              background: 'var(--bg-surface)', 
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <div 
-                className="w-2 h-2 rounded-full"
-                style={{ background: 'var(--status-idle)' }}
-              ></div>
-              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Completed
-              </span>
-            </div>
-            <div className="text-4xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-              {stats.completedToday}
-            </div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {stats.errorTasks} errors
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Agent Status Section */}
-      <section className="px-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Agents
-          </h2>
-          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {stats.activeAgents}/{stats.totalAgents} active
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          {agents.map((agent) => (
+          {agents.slice(0, 4).map((agent) => (
             <div
               key={agent.id}
-              className="p-4 rounded-2xl"
+              className="p-4 rounded-xl"
               style={{ 
                 background: 'var(--bg-surface)',
-                border: '1px solid var(--border)',
                 boxShadow: 'var(--shadow-sm)'
               }}
             >
-              <div className="flex items-center gap-3">
-                {/* Status Indicator */}
+              <div className="flex items-start gap-3">
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
-                  style={{ background: getAgentStatusColor(agent.status) }}
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                  style={{ background: getAgentColor(agent.name) }}
                 >
                   {agent.name[0]}
                 </div>
-
-                {/* Agent Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {agent.name}
-                    </h3>
-                    <span 
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ 
-                        background: `${getAgentStatusColor(agent.status)}20`,
-                        color: getAgentStatusColor(agent.status)
-                      }}
-                    >
-                      {agent.status}
-                    </span>
-                  </div>
+                  <h3 className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
+                    {agent.name}
+                  </h3>
                   <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-                    {agent.currentTask}
+                    {agent.currentTask}...
                   </p>
                 </div>
               </div>
@@ -208,14 +148,62 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAB Button */}
+      {/* Developer Team Section */}
+      <section className="px-4">
+        <h2 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>
+          DEVELOPER TEAM
+        </h2>
+        
+        <div className="space-y-3">
+          {agents.map((agent) => (
+            <div
+              key={agent.id}
+              className="relative p-4 rounded-xl"
+              style={{ 
+                background: 'var(--bg-surface)',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              {agent.status === 'error' && (
+                <div 
+                  className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-semibold"
+                  style={{ background: 'var(--status-error)', color: 'white' }}
+                >
+                  Error
+                </div>
+              )}
+              
+              <div className="flex items-start gap-3 mb-3">
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                  style={{ background: getAgentColor(agent.name) }}
+                ></div>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                    {agent.name}
+                  </h3>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {agent.currentTask}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {agent.tasksInQueue} in queue · {agent.tasksCompleted} done
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAB */}
       <button
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform z-40"
-        style={{ background: 'var(--accent)', boxShadow: 'var(--shadow-lg)' }}
+        style={{ background: 'var(--accent)' }}
         onClick={() => window.location.href = '/tasks'}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </button>
     </main>
