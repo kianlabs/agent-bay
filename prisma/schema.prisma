@@ -83,3 +83,19 @@ model ErrorLog {
   @@index([agentId])
   @@index([createdAt])
 }
+
+// Task queue for real Hermes Agent execution
+model Task {
+  id          String    @id @default(cuid())
+  prompt      String    // User's original request
+  assignedTo  String?   // Agent name (Frontend/Backend/Research/Review)
+  status      String    @default("pending") // pending | running | completed | error
+  result      String?   // Output from Hermes agent
+  error       String?   // Error message if failed
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  @@index([status])
+  @@index([createdAt])
+}
