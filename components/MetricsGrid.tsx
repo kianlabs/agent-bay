@@ -8,8 +8,6 @@ interface Metrics {
   testsFailed: number
 }
 
-import MetricsChart from './MetricsChart'
-
 export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
   if (!metrics) return null
 
@@ -105,31 +103,6 @@ export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
             today
           </div>
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-4 mt-4">
-        {/* Task Completion Trend */}
-        <div
-          className="p-4 rounded-xl border"
-          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-        >
-          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-            Task Completion (Last 7 Days)
-          </h3>
-          <MetricsChart type="completion" />
-        </div>
-
-        {/* Agent Performance */}
-        <div
-          className="p-4 rounded-xl border"
-          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-        >
-          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-            Agent Performance
-          </h3>
-          <MetricsChart type="agent-performance" />
         </div>
       </div>
     </section>

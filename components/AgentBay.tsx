@@ -1,5 +1,4 @@
 import ActivityTimeline from './ActivityTimeline'
-import TaskList from './TaskList'
 
 interface Agent {
   id: string
@@ -53,14 +52,6 @@ export default function AgentBay({
             Recent Activity
           </h3>
           <ActivityTimeline />
-        </div>
-
-        {/* Recent Tasks */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-            Recent Tasks
-          </h3>
-          <TaskList />
         </div>
 
         {/* Agent Cards Grid (Fallback/Summary) */}
