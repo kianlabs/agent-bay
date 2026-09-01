@@ -18,6 +18,7 @@ export async function GET() {
         color: true,
         status: true,
         currentTask: true,
+        currentTaskId: true,
         tasksCompleted: true,
         tasksInQueue: true,
         lastError: true,

@@ -119,10 +119,10 @@ export default function AgentDetailList({ agents }: { agents: Agent[] }) {
                   errorMessage={agent.lastError}
                   errorDetails={agent.errorDetails ?? ''}
                   timestamp={agent.errorTimestamp ?? new Date()}
-                  onRetry={() => handleRetry(agent.id, agent.currentTaskId ?? agent.id)}
-                  onViewLogs={() =>
-                    handleViewLogs(agent.currentTaskId ?? agent.id, agent.name)
-                  }
+                  onRetry={agent.currentTaskId ? () => handleRetry(agent.id, agent.currentTaskId!) : undefined}
+                  onViewLogs={agent.currentTaskId ? () =>
+                    handleViewLogs(agent.currentTaskId!, agent.name)
+                  : undefined}
                 />
               )}
 

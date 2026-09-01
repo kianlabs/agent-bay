@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { pusherServer } from '@/lib/pusher-server'
-import { orchestrateTask } from '@/lib/hermes-orchestrator'
+import { tryAcquireLock, releaseLock, isLocked } from '@/lib/execution-lock'
+import { runOrchestrationLocked } from '@/lib/hermes-orchestrator'
+import { clearAgentsForTask } from '@/lib/task-agent-tracking'
 
 export async function PATCH(
   request: NextRequest,
@@ -59,6 +61,7 @@ export async function POST(
     const body = await request.json()
     const { action, retryTaskId } = body
 
+    // 1. Validate action and retryTaskId
     if (action !== 'retry' || !retryTaskId) {
       return NextResponse.json(
         { error: 'action "retry" and retryTaskId are required' },
@@ -66,7 +69,26 @@ export async function POST(
       )
     }
 
-    // Fetch the task to retry
+    // 2. Fetch agent and validate it is associated with retryTaskId
+    const agent = await prisma.agent.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!agent) {
+      return NextResponse.json(
+        { error: 'Agent not found' },
+        { status: 404 }
+      )
+    }
+
+    if (agent.currentTaskId !== retryTaskId) {
+      return NextResponse.json(
+        { error: 'Agent is not associated with the specified task' },
+        { status: 409 }
+      )
+    }
+
+    // 3. Fetch task and validate status === 'error'
     const task = await prisma.task.findUnique({
       where: { id: retryTaskId },
     })
@@ -78,26 +100,55 @@ export async function POST(
       )
     }
 
-    // Reset task status to pending so it can be re-queued
-    await prisma.task.update({
-      where: { id: retryTaskId },
-      data: {
-        status: 'pending',
-        error: null,
-        result: null,
-        evaluation: null,
-        agentResults: null,
-        startedAt: null,
-        completedAt: null,
-      },
-    })
+    if (task.status !== 'error') {
+      return NextResponse.json(
+        { error: `Task is not in error state (current: ${task.status})` },
+        { status: 409 }
+      )
+    }
 
-    // Reset agent to idle if it was in error state
-    const agent = await prisma.agent.findUnique({
-      where: { id: params.id },
-    })
+    // 4. Check task is not locked/running/planning/pending — reject without DB mutation
+    if (isLocked(retryTaskId)) {
+      return NextResponse.json(
+        { error: 'Task is currently locked/running, cannot retry' },
+        { status: 409 }
+      )
+    }
 
-    if (agent && agent.status === 'error') {
+    // Double-check: task.status must be 'error' (not active), already validated above.
+    // Also guard against running/planning/pending states reaching here (belt-and-suspenders).
+    const activeStatuses = ['running', 'planning', 'pending']
+    if (activeStatuses.includes(task.status)) {
+      return NextResponse.json(
+        { error: `Task is active (status: ${task.status}), cannot retry` },
+        { status: 409 }
+      )
+    }
+
+    // 5. Acquire execution lock BEFORE any DB mutation
+    if (!tryAcquireLock(retryTaskId)) {
+      return NextResponse.json(
+        { error: 'Could not acquire execution lock — task may already be running' },
+        { status: 409 }
+      )
+    }
+
+    try {
+      // 6. Now we own the lock — safe to reset task status to 'pending', clear error fields
+      await prisma.task.update({
+        where: { id: retryTaskId },
+        data: {
+          status: 'pending',
+          error: null,
+          result: null,
+          evaluation: null,
+          agentResults: null,
+          startedAt: null,
+          completedAt: null,
+        },
+      })
+
+      // Reset agent to idle
       await prisma.agent.update({
         where: { id: params.id },
         data: {
@@ -114,20 +165,31 @@ export async function POST(
         status: 'idle',
         currentTask: 'Waiting for task',
       })
+
+      // Fire metrics-updated
+      await pusherServer.trigger('agent-ops', 'metrics-updated', {})
+
+      // 7. Run orchestration with lock already acquired — use runOrchestrationLocked
+      // to avoid double-locking. Run fire-and-forget; lock released in finally.
+      runOrchestrationLocked(retryTaskId, task.prompt)
+        .catch((err) => {
+          console.error(`[API Agents] Retry orchestration failed for task ${retryTaskId}:`, err)
+        })
+        .finally(() => {
+          clearAgentsForTask(retryTaskId)
+          releaseLock(retryTaskId)
+        })
+
+      return NextResponse.json({
+        message: 'Task re-queued for retry',
+        taskId: retryTaskId,
+      })
+    } catch (innerError) {
+      // 8. If anything fails before/during orchestration start, release lock
+      clearAgentsForTask(retryTaskId)
+      releaseLock(retryTaskId)
+      throw innerError
     }
-
-    // Re-queue the task via orchestrator (don't await — runs in background)
-    orchestrateTask(retryTaskId, task.prompt).catch((err) => {
-      console.error(`[API Agents] Retry orchestration failed for task ${retryTaskId}:`, err)
-    })
-
-    // Fire metrics-updated after re-queue
-    await pusherServer.trigger('agent-ops', 'metrics-updated', {})
-
-    return NextResponse.json({
-      message: 'Task re-queued for retry',
-      taskId: retryTaskId,
-    })
   } catch (error) {
     console.error('Error retrying task:', error)
     return NextResponse.json(

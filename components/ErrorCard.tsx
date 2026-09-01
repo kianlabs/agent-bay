@@ -4,8 +4,8 @@ interface ErrorCardProps {
   errorMessage: string
   errorDetails: string
   timestamp: Date
-  onRetry: () => void
-  onViewLogs: () => void
+  onRetry?: () => void
+  onViewLogs?: () => void
 }
 
 function getTimeAgo(timestamp: Date): string {
@@ -75,14 +75,16 @@ export default function ErrorCard({
       <div className="flex gap-2">
         <button
           onClick={onRetry}
-          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center"
+          disabled={!onRetry}
+          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
         >
           Retry
         </button>
         <button
           onClick={onViewLogs}
-          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center"
+          disabled={!onViewLogs}
+          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'rgba(139,148,158,0.1)', color: 'var(--text-secondary)' }}
         >
           View Logs
