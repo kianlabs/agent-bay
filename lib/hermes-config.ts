@@ -53,6 +53,31 @@ export function getTimeoutForAgent(agentName: string): number {
 // Valid agent names for planning
 export type ValidAgentName = 'research' | 'backend' | 'frontend' | 'review'
 
+// Logical (planning) agent name -> display name as stored in the Agent DB row
+export const AGENT_DISPLAY_NAMES: Record<ValidAgentName, string> = {
+  research: 'Researcher',
+  backend: 'Backend',
+  frontend: 'Frontend',
+  review: 'Review',
+}
+
+// Display name -> logical (planning) agent name.
+// Reverse lookup used where routing produces a display name.
+const DISPLAY_TO_LOGICAL: Record<string, ValidAgentName> = {
+  Researcher: 'research',
+  Backend: 'backend',
+  Frontend: 'frontend',
+  Review: 'review',
+}
+
+/**
+ * Resolve a display name (e.g. "Backend") to its logical agent name (e.g. "backend").
+ * Returns undefined if the display name is not a core worker.
+ */
+export function toLogicalAgentName(displayName: string): ValidAgentName | undefined {
+  return DISPLAY_TO_LOGICAL[displayName]
+}
+
 // Planning schema from Hermes Main
 // PRESERVES backward compatibility: legacy plans may omit id / dependsOn entirely.
 // New planner output provides stable step IDs and step-ID based dependsOn.

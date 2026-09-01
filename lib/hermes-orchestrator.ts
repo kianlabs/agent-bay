@@ -5,23 +5,16 @@ import {
   executeHermesMainPlanning,
   executeHermesMainEvaluation,
 } from './hermes-executor'
-import { MAX_CONCURRENT_WORKERS } from './hermes-config'
+import { MAX_CONCURRENT_WORKERS, toLogicalAgentName } from './hermes-config'
 import { routeTask } from './hermes-runner'
 import { tryAcquireLock, releaseLock, isLocked } from './execution-lock'
 import { trackAgentForTask, getAgentsForTask, clearAgentsForTask, isAgentUsedByOtherActiveTask } from './task-agent-tracking'
 import { normalizePlan, validateExecutionPlan, type ExecutionStep } from './dependency-graph'
 import { ParallelScheduler } from './parallel-scheduler'
 import { executeStepsInParallel } from './parallel-execution'
+import { workerCoordinator } from './worker-execution-coordinator'
 
 // Legacy runningWorkers counter removed - concurrency now managed by worker-execution-coordinator
-
-// Agent name mapping: plan uses lowercase, DB uses capitalized
-const AGENT_NAME_MAP: Record<string, string> = {
-  research: 'Researcher',
-  backend: 'Backend',
-  frontend: 'Frontend',
-  review: 'Review',
-}
 
 /**
  * Orchestrate full task execution (public API)
@@ -625,6 +618,13 @@ async function resetStaleAgentsForTask(taskId: string) {
 
 /**
  * Fallback to old keyword routing when planning fails
+ *
+ * MUST go through the global worker coordinator just like normal parallel
+ * execution so that:
+ * - the same Agent instance cannot run twice concurrently
+ * - fallback workers count toward MAX_CONCURRENT_WORKERS
+ *
+ * Runs under the existing task execution lock; does NOT acquire/release it here.
  */
 async function fallbackToKeywordRouting(taskId: string, prompt: string) {
   console.log('[Orchestrator] Using fallback keyword routing')
@@ -655,6 +655,20 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
     })
   }
 
+  // Resolve display name -> logical agent name for the global coordinator.
+  const logicalAgent = toLogicalAgentName(agentName)
+  if (!logicalAgent) {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: 'error',
+        error: `Agent ${agentName} not a core worker`,
+        completedAt: new Date(),
+      },
+    })
+    return
+  }
+
   // Find agent
   const agent = await prisma.agent.findFirst({
     where: { name: agentName },
@@ -672,7 +686,13 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
     return
   }
 
+  // Acquire global worker slot (blocks if agent busy or global capacity exhausted)
+  await workerCoordinator.acquire(logicalAgent)
+
   try {
+    // Track this agent for the task (scoped cleanup / shared-agent ownership)
+    trackAgentForTask(taskId, agent.id)
+
     await prisma.agent.update({
       where: { id: agent.id },
       data: { status: 'working' },
@@ -720,6 +740,7 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
       })
     }
   } finally {
-    // Agent status restored by the try/catch above
+    // CRITICAL: Always release the global worker slot (covers throws too)
+    workerCoordinator.release(logicalAgent)
   }
 }

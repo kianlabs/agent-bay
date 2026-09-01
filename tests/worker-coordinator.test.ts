@@ -454,4 +454,169 @@ describe('WorkerExecutionCoordinator', () => {
       expect(coordinator.getWaitQueueSize()).toBe(0)
     })
   })
+
+  // TEST 1 — Normal Backend vs Fallback Backend
+  describe('fallback same-agent protection', () => {
+    it('should not run fallback Backend while normal Backend holds the slot', async () => {
+      const deferredNormal = createDeferred()
+
+      let normalActive = false
+      let fallbackActive = false
+      let maxBackend = 0
+
+      // Normal DAG Backend (Task A)
+      async function normalBackend() {
+        await coordinator.acquire('backend')
+        normalActive = true
+        const cur = (normalActive ? 1 : 0) + (fallbackActive ? 1 : 0)
+        if (cur > maxBackend) maxBackend = cur
+        await deferredNormal.promise
+        normalActive = false
+        coordinator.release('backend')
+      }
+
+      // Fallback Backend (Task B) - simulates fallbackToKeywordRouting path
+      async function fallbackBackend() {
+        await coordinator.acquire('backend')
+        fallbackActive = true
+        const cur = (normalActive ? 1 : 0) + (fallbackActive ? 1 : 0)
+        if (cur > maxBackend) maxBackend = cur
+        fallbackActive = false
+        coordinator.release('backend')
+      }
+
+      const pNormal = normalBackend()
+      await new Promise((r) => setTimeout(r, 10))
+      expect(coordinator.isAgentBusy('backend')).toBe(true)
+
+      const pFallback = fallbackBackend()
+      await new Promise((r) => setTimeout(r, 10))
+
+      // Fallback must NOT have started while normal Backend is active
+      expect(normalActive).toBe(true)
+      expect(maxBackend).toBeLessThanOrEqual(1)
+      expect(coordinator.getWaitQueueSize()).toBe(1)
+
+      // Release normal -> fallback may proceed
+      deferredNormal.resolve()
+      await Promise.all([pNormal, pFallback])
+
+      expect(fallbackActive).toBe(false) // already done
+      expect(maxBackend).toBeLessThanOrEqual(1)
+      expect(coordinator.getActiveCount()).toBe(0)
+    })
+  })
+
+  // TEST 2 — Fallback counts toward global limit
+  describe('fallback global limit', () => {
+    it('should count fallback toward global MAX_CONCURRENT_WORKERS', async () => {
+      const observer = new WorkerExecutionCoordinator(2)
+      const d1 = createDeferred()
+      const d2 = createDeferred()
+      const d3 = createDeferred()
+      let active = 0
+      let maxObserved = 0
+
+      async function normalResearch() {
+        await observer.acquire('research')
+        active++
+        if (active > maxObserved) maxObserved = active
+        await d1.promise
+        active--
+        observer.release('research')
+      }
+      async function fallbackBackend() {
+        await observer.acquire('backend')
+        active++
+        if (active > maxObserved) maxObserved = active
+        await d2.promise
+        active--
+        observer.release('backend')
+      }
+      async function thirdNormal() {
+        await observer.acquire('frontend')
+        active++
+        if (active > maxObserved) maxObserved = active
+        await d3.promise
+        active--
+        observer.release('frontend')
+      }
+
+      const p1 = normalResearch()
+      const p2 = fallbackBackend()
+      const p3 = thirdNormal()
+
+      await new Promise((r) => setTimeout(r, 10))
+      expect(observer.getWaitQueueSize()).toBe(1)
+
+      d1.resolve()
+      d2.resolve()
+      d3.resolve()
+      await Promise.all([p1, p2, p3])
+
+      expect(maxObserved).toBeLessThanOrEqual(2)
+      expect(observer.getActiveCount()).toBe(0)
+    })
+  })
+
+  // TEST 3 — Fallback different agent may overlap
+  describe('fallback different agent', () => {
+    it('should allow normal Backend + fallback Research to overlap', async () => {
+      const d = createDeferred()
+      let backendActive = false
+      let researchActive = false
+
+      async function normalBackend() {
+        await coordinator.acquire('backend')
+        backendActive = true
+        await d.promise
+        backendActive = false
+        coordinator.release('backend')
+      }
+      async function fallbackResearch() {
+        await coordinator.acquire('research')
+        researchActive = true
+        coordinator.release('research')
+      }
+
+      const pNormal = normalBackend()
+      await new Promise((r) => setTimeout(r, 10))
+      expect(backendActive).toBe(true)
+
+      const pFallback = fallbackResearch()
+      await pFallback
+      expect(researchActive).toBe(true)
+      expect(coordinator.getWaitQueueSize()).toBe(0)
+
+      d.resolve()
+      await pNormal
+    })
+  })
+
+  // TEST 4 — Fallback error cleanup
+  describe('fallback error cleanup', () => {
+    it('should release the global slot even when execution throws', async () => {
+      let active = false
+      async function fallbackWithError() {
+        await coordinator.acquire('backend')
+        active = true
+        try {
+          throw new Error('worker failed')
+        } finally {
+          coordinator.release('backend')
+        }
+      }
+
+      await expect(fallbackWithError()).rejects.toThrow('worker failed')
+      expect(active).toBe(true)
+      expect(coordinator.getActiveCount()).toBe(0)
+      expect(coordinator.isAgentBusy('backend')).toBe(false)
+
+      // Agent must be reusable afterward
+      await coordinator.acquire('backend')
+      expect(coordinator.isAgentBusy('backend')).toBe(true)
+      coordinator.release('backend')
+      expect(coordinator.getActiveCount()).toBe(0)
+    })
+  })
 })

@@ -6,6 +6,8 @@ import Header from '@/components/Header'
 import MetricsGrid from '@/components/MetricsGrid'
 import AgentBay from '@/components/AgentBay'
 import AgentDetailList from '@/components/AgentDetailList'
+import TaskHistoryPanel from '@/components/TaskHistoryPanel'
+import TaskSubmitModal from '@/components/TaskSubmitModal'
 import FAB from '@/components/FAB'
 import BottomNav from '@/components/BottomNav'
 
@@ -31,6 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [connected, setConnected] = useState(false)
   const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([])
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     // Initial fetch
@@ -155,8 +158,10 @@ export default function Home() {
       <MetricsGrid metrics={metrics} />
       <AgentBay agents={agents} speechBubbles={speechBubbles} />
       <AgentDetailList agents={agents} />
-      <FAB />
+      <TaskHistoryPanel />
+      <FAB onOpenModal={() => setModalOpen(true)} />
       <BottomNav />
+      {modalOpen && <TaskSubmitModal onClose={() => setModalOpen(false)} />}
     </main>
   )
 }

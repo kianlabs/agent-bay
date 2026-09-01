@@ -10,16 +10,9 @@ import { pusherServer } from './pusher-server'
 import { executeHermesAgent } from './hermes-executor'
 import { trackAgentForTask } from './task-agent-tracking'
 import { workerCoordinator } from './worker-execution-coordinator'
+import { AGENT_DISPLAY_NAMES } from './hermes-config'
 import type { ExecutionStep } from './dependency-graph'
 import type { ParallelScheduler } from './parallel-scheduler'
-
-// Agent name mapping
-const AGENT_NAME_MAP: Record<string, string> = {
-  research: 'Researcher',
-  backend: 'Backend',
-  frontend: 'Frontend',
-  review: 'Review',
-}
 
 /**
  * Execute a single step (worker)
@@ -32,7 +25,7 @@ async function executeStep(
   step: ExecutionStep,
   scheduler: ParallelScheduler
 ): Promise<void> {
-  const agentName = AGENT_NAME_MAP[step.agent]
+  const agentName = AGENT_DISPLAY_NAMES[step.agent]
   if (!agentName) {
     console.error(`[ParallelExec] Unknown agent: ${step.agent}`)
     scheduler.skipStep(step.id, `Unknown agent: ${step.agent}`)
