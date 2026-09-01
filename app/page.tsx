@@ -10,6 +10,7 @@ import TaskHistoryPanel from '@/components/TaskHistoryPanel'
 import TaskSubmitModal from '@/components/TaskSubmitModal'
 import FAB from '@/components/FAB'
 import BottomNav from '@/components/BottomNav'
+import NotificationCenter from '@/components/NotificationCenter'
 
 interface Agent {
   id: string
@@ -165,6 +166,7 @@ export default function Home() {
       <FAB onOpenModal={() => setModalOpen(true)} />
       <BottomNav />
       {modalOpen && <TaskSubmitModal onClose={() => setModalOpen(false)} />}
+      <NotificationCenter />
     </main>
   )
 }
