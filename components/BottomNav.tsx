@@ -15,17 +15,28 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 flex justify-around py-2 border-t"
-      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      className="fixed bottom-0 left-0 right-0 flex justify-around border-t"
+      style={{
+        background: 'var(--bg-surface)',
+        borderColor: 'var(--border)',
+        // HIGH: safe-area-inset-bottom
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => setActive(tab.id)}
-          className="flex flex-col items-center gap-1 px-4 py-2 transition-colors"
-          style={{ color: active === tab.id ? 'var(--accent)' : 'var(--text-muted)' }}
+          // LOW: flex-1 for even distribution
+          className="flex-1 flex flex-col items-center gap-1 py-2 transition-colors"
+          style={{ color: tab.id === active ? 'var(--accent)' : 'var(--text-muted)' }}
         >
-          <svg className="w-6 h-6" fill={tab.id === 'office' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-6 h-6"
+            fill={tab.id === active ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
           </svg>
           <span className="text-xs font-semibold">{tab.label}</span>

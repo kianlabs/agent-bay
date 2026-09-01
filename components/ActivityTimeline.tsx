@@ -34,7 +34,6 @@ export default function ActivityTimeline() {
 
   useEffect(() => {
     fetchActivities()
-    // Poll every 5 seconds for new activities
     const interval = setInterval(fetchActivities, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -77,25 +76,23 @@ export default function ActivityTimeline() {
   }
 
   return (
-    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+    // LOW: max-h-[60vh] instead of max-h-[400px]
+    <div className="space-y-2 max-h-[60vh] overflow-y-auto">
       {activities.map((activity) => (
         <div
           key={activity.id}
           className="flex items-start gap-3 p-3 rounded-lg border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          {/* Icon */}
           <span
             className="text-lg flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
             style={{
               background: activityColors[activity.type] + '20',
-              color: activityColors[activity.type]
+              color: activityColors[activity.type],
             }}
           >
             {activityIcons[activity.type]}
           </span>
-
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
               <span className="font-semibold">{activity.agentName}</span>{' '}

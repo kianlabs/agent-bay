@@ -1,6 +1,7 @@
 'use client'
 
 import * as THREE from 'three'
+import { useMemo } from 'react'
 import { Html } from '@react-three/drei'
 
 interface OfficeDecorProps {
@@ -10,7 +11,23 @@ interface OfficeDecorProps {
 
 export default function OfficeDecor({ deskPositions, agents }: OfficeDecorProps) {
   console.log('🏢 OfficeDecor rendering:', { deskPositions, agents })
-  
+
+  // Pre-compute random values so they don't change on every render
+  const plant1Offsets = useMemo(
+    () => [0, 1, 2, 3, 4].map(() => Math.random() * 0.15),
+    []
+  )
+
+  const plant3Data = useMemo(
+    () =>
+      [0, 1, 2, 3, 4, 5].map(() => ({
+        yOffset: Math.random() * 0.4,
+        rotX: Math.random() * 0.3,
+        rotY: Math.random() * Math.PI * 2,
+      })),
+    []
+  )
+
   return (
     <group>
       {/* ==================== LOUNGE AREA (Back-Left) ==================== */}
@@ -284,7 +301,7 @@ export default function OfficeDecor({ deskPositions, agents }: OfficeDecorProps)
             key={i}
             position={[
               Math.cos((i * Math.PI * 2) / 5) * 0.2,
-              0.35 + Math.random() * 0.15,
+              0.35 + plant1Offsets[i],
               Math.sin((i * Math.PI * 2) / 5) * 0.2,
             ]}
           >
@@ -326,10 +343,10 @@ export default function OfficeDecor({ deskPositions, agents }: OfficeDecorProps)
             key={i}
             position={[
               Math.cos((i * Math.PI * 2) / 6) * 0.3,
-              0.9 + Math.random() * 0.4,
+              0.9 + plant3Data[i].yOffset,
               Math.sin((i * Math.PI * 2) / 6) * 0.3,
             ]}
-            rotation={[Math.random() * 0.3, Math.random() * Math.PI * 2, 0]}
+            rotation={[plant3Data[i].rotX, plant3Data[i].rotY, 0]}
           >
             <coneGeometry args={[0.15, 0.5, 4]} />
             <meshStandardMaterial color="#15803d" />

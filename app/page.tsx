@@ -130,6 +130,9 @@ export default function Home() {
         fetch('/api/metrics'),
       ])
 
+      if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.status}`)
+      if (!metricsRes.ok) throw new Error(`Failed to fetch metrics: ${metricsRes.status}`)
+
       const agentsData = await agentsRes.json()
       const metricsData = await metricsRes.json()
 
@@ -153,7 +156,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen pb-20">
+    <main className="min-h-screen pb-[max(5rem,calc(5rem+env(safe-area-inset-bottom)))]">
       <Header connected={connected} />
       <MetricsGrid metrics={metrics} />
       <AgentBay agents={agents} speechBubbles={speechBubbles} />

@@ -50,12 +50,14 @@ export default function AgentDetailList({ agents }: { agents: Agent[] }) {
     <>
       <section className="px-4 pb-6">
         <h3
-          className="text-sm font-semibold uppercase mb-3"
+          className="text-sm font-semibold mb-3"
           style={{ color: 'var(--text-secondary)' }}
         >
-          Developer Team
+          Agent Details
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+
+        {/* MEDIUM: grid-cols-1 sm:grid-cols-2 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {agents.map((agent) => (
             <div
               key={agent.id}
@@ -65,43 +67,36 @@ export default function AgentDetailList({ agents }: { agents: Agent[] }) {
                 borderColor: 'var(--border)',
               }}
             >
-              {/* Name + Status */}
               <div className="flex items-center gap-2 mb-1">
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ background: agent.color }}
                 />
+                {/* MEDIUM: truncate min-w-0 on name */}
                 <span
-                  className="font-semibold text-sm"
+                  className="font-semibold text-sm truncate min-w-0"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {agent.name}
                 </span>
                 {agent.status === 'working' && (
                   <span
-                    className="text-xs px-1.5 py-0.5 rounded"
-                    style={{
-                      background: 'rgba(59, 130, 246, 0.1)',
-                      color: 'var(--status-working)',
-                    }}
+                    className="text-xs px-1.5 py-0.5 rounded-full ml-auto flex-shrink-0"
+                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#388bfd' }}
                   >
                     working
                   </span>
                 )}
                 {agent.status === 'error' && (
                   <span
-                    className="text-xs px-1.5 py-0.5 rounded"
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      color: 'var(--status-error)',
-                    }}
+                    className="text-xs px-1.5 py-0.5 rounded-full ml-auto flex-shrink-0"
+                    style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
                   >
                     error
                   </span>
                 )}
               </div>
 
-              {/* Current task */}
               <div
                 className="text-xs mb-2 line-clamp-2"
                 style={{ color: 'var(--text-secondary)' }}
@@ -124,24 +119,18 @@ export default function AgentDetailList({ agents }: { agents: Agent[] }) {
                   errorMessage={agent.lastError}
                   errorDetails={agent.errorDetails ?? ''}
                   timestamp={agent.errorTimestamp ?? new Date()}
-                  onRetry={() =>
-                    handleRetry(agent.id, agent.currentTaskId ?? agent.id)
-                  }
+                  onRetry={() => handleRetry(agent.id, agent.currentTaskId ?? agent.id)}
                   onViewLogs={() =>
-                    handleViewLogs(
-                      agent.currentTaskId ?? agent.id,
-                      agent.name
-                    )
+                    handleViewLogs(agent.currentTaskId ?? agent.id, agent.name)
                   }
                 />
               )}
 
-              {/* Stats */}
               <div
                 className="text-xs font-mono mt-2"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                {agent.tasksCompleted} completed today
+                {agent.tasksCompleted} tasks completed
               </div>
             </div>
           ))}

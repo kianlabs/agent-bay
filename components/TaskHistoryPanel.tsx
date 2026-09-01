@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: Task['status'] }) {
 function formatTime(iso: string) {
   const d = new Date(iso)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
-    ' ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    ' · ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
 export default function TaskHistoryPanel() {
@@ -46,11 +46,10 @@ export default function TaskHistoryPanel() {
     try {
       const res = await fetch('/api/tasks')
       if (!res.ok) return
-      const data: Task[] = await res.json()
-      // Keep last 10, newest first
+      const data = await res.json()
       setTasks(data.slice(0, 10))
     } catch {
-      // silently ignore — stale data is fine
+      // silent
     } finally {
       setLoading(false)
     }
@@ -58,21 +57,18 @@ export default function TaskHistoryPanel() {
 
   useEffect(() => {
     fetchTasks()
-
-    // Auto-refresh every 5s
     const interval = setInterval(fetchTasks, 5000)
+    return () => clearInterval(interval)
+  }, [fetchTasks])
 
-    // Real-time updates via Pusher
+  useEffect(() => {
     const pusher = getPusherClient()
     const channel = pusher.subscribe('agent-ops')
-
-    channel.bind('task-created', () => fetchTasks())
-    channel.bind('task-updated', () => fetchTasks())
-
+    channel.bind('task-created', fetchTasks)
+    channel.bind('task-updated', fetchTasks)
     return () => {
-      clearInterval(interval)
-      channel.unbind('task-created')
-      channel.unbind('task-updated')
+      channel.unbind('task-created', fetchTasks)
+      channel.unbind('task-updated', fetchTasks)
     }
   }, [fetchTasks])
 
@@ -87,7 +83,7 @@ export default function TaskHistoryPanel() {
             Task History
           </h2>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Last 10
+            last 10
           </span>
         </div>
 
@@ -95,12 +91,12 @@ export default function TaskHistoryPanel() {
           <div className="flex justify-center py-6">
             <div
               className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: '#3fb950', borderTopColor: 'transparent' }}
+              style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
             />
           </div>
         ) : tasks.length === 0 ? (
           <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>
-            No tasks yet. Submit one with the button below.
+            No tasks yet. Submit one with button below.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -111,8 +107,9 @@ export default function TaskHistoryPanel() {
                 style={{ background: 'var(--bg-primary)' }}
               >
                 <div className="flex-1 min-w-0">
+                  {/* MEDIUM: line-clamp-2 on prompt */}
                   <p
-                    className="text-sm font-medium truncate mb-1"
+                    className="text-sm font-medium line-clamp-2 mb-1"
                     style={{ color: 'var(--text-primary)' }}
                     title={task.prompt}
                   >

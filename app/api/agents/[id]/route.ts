@@ -11,6 +11,14 @@ export async function PATCH(
     const body = await request.json()
     const { status, currentTask, tasksCompleted, tasksInQueue } = body
 
+    const VALID_STATUSES = ['idle', 'working', 'error']
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     const agent = await prisma.agent.update({
       where: { id: params.id },
       data: {

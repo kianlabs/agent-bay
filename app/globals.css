@@ -40,6 +40,11 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

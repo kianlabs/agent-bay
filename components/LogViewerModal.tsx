@@ -33,7 +33,6 @@ export default function LogViewerModal({
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data: { logs: LogEntry[] } = await res.json()
         setLogs(data.logs)
-        // Default to the tab matching agentName, or first available
         const match = data.logs.find((l) => l.agent === agentName)
         setActiveTab(match?.agent ?? data.logs[0]?.agent ?? '')
       } catch (err) {
@@ -45,19 +44,16 @@ export default function LogViewerModal({
     fetchLogs()
   }, [taskId, agentName])
 
-  // Auto-scroll to bottom when active tab or content changes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeTab, logs])
 
   const activeLog = logs.find((l) => l.agent === activeTab)
 
-  // Close on backdrop click
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -72,12 +68,12 @@ export default function LogViewerModal({
       style={{ background: 'rgba(0, 0, 0, 0.7)' }}
       onClick={handleBackdropClick}
     >
+      {/* Modal — HIGH: max-h-[90dvh] */}
       <div
-        className="flex flex-col w-full max-w-2xl rounded-xl border overflow-hidden"
+        className="flex flex-col w-full max-w-2xl rounded-xl border overflow-hidden max-h-[90dvh]"
         style={{
           background: '#0d1117',
           borderColor: '#30363d',
-          maxHeight: '80vh',
         }}
       >
         {/* Header */}
@@ -93,9 +89,10 @@ export default function LogViewerModal({
               / task_{taskId}
             </span>
           </div>
+          {/* HIGH: close button min 44px */}
           <button
             onClick={onClose}
-            className="text-sm px-2 py-1 rounded hover:opacity-80 transition-opacity font-mono"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm rounded hover:opacity-80 transition-opacity font-mono"
             style={{ color: '#8b949e', background: '#161b22' }}
             aria-label="Close log viewer"
           >
@@ -103,7 +100,7 @@ export default function LogViewerModal({
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — MEDIUM: py-2.5 */}
         {!loading && !error && logs.length > 0 && (
           <div
             className="flex gap-1 px-4 pt-3 pb-0 flex-shrink-0 overflow-x-auto"
@@ -113,7 +110,7 @@ export default function LogViewerModal({
               <button
                 key={log.agent}
                 onClick={() => setActiveTab(log.agent)}
-                className="px-3 py-1.5 text-xs font-mono rounded-t transition-colors whitespace-nowrap"
+                className="px-3 py-2.5 text-xs font-mono rounded-t transition-colors whitespace-nowrap"
                 style={{
                   background: activeTab === log.agent ? '#161b22' : 'transparent',
                   color: activeTab === log.agent ? '#3fb950' : '#8b949e',
@@ -129,7 +126,7 @@ export default function LogViewerModal({
           </div>
         )}
 
-        {/* Content */}
+        {/* Content — HIGH: height cap via parent max-h-[90dvh] + overflow */}
         <div className="flex-1 overflow-y-auto p-4" style={{ minHeight: 0 }}>
           {loading && (
             <div className="flex items-center justify-center h-32">
@@ -154,7 +151,7 @@ export default function LogViewerModal({
 
           {!loading && !error && activeLog && (
             <pre
-              className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-all"
+              className="text-[13px] sm:text-xs font-mono leading-relaxed whitespace-pre-wrap break-all"
               style={{ color: '#e6edf3' }}
             >
               {activeLog.content || '(empty log)'}

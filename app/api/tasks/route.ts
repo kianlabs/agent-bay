@@ -32,6 +32,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (prompt.trim().length > 10000) {
+      return NextResponse.json(
+        { error: 'Prompt exceeds maximum length of 10000 characters' },
+        { status: 400 }
+      )
+    }
+
     // Create task in database
     const task = await prisma.task.create({
       data: {

@@ -11,13 +11,15 @@ export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
 
   return (
     <section className="px-4 py-4">
-      <div className="grid grid-cols-2 gap-3">
+      {/* MEDIUM: grid-cols-1 sm:grid-cols-2 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Tasks Completed Today */}
         <div
           className="p-4 rounded-xl border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
+          {/* MEDIUM: text-sm labels */}
+          <div className="text-sm font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
             Tasks Completed
           </div>
           <div className="flex items-baseline gap-2">
@@ -35,7 +37,7 @@ export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
           className="p-4 rounded-xl border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-sm font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
             Tasks In Progress
           </div>
           <div className="flex items-baseline gap-2">
@@ -53,7 +55,7 @@ export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
           className="p-4 rounded-xl border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-sm font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
             Agents Working
           </div>
           <div className="flex items-baseline gap-2">
@@ -71,23 +73,19 @@ export default function MetricsGrid({ metrics }: { metrics: Metrics | null }) {
           className="p-4 rounded-xl border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-sm font-semibold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>
             Task Errors
           </div>
           <div className="flex items-baseline gap-2">
-            <div 
+            <div
               className="text-3xl font-bold"
-              style={{ 
-                color: metrics.taskErrors > 0 
-                  ? 'var(--status-error)' 
-                  : 'var(--text-primary)' 
-              }}
+              style={{ color: metrics.taskErrors > 0 ? 'var(--status-error)' : 'var(--text-primary)' }}
             >
               {metrics.taskErrors}
             </div>
           </div>
           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-            today
+            errors
           </div>
         </div>
       </div>

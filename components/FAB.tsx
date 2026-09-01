@@ -2,7 +2,11 @@ export default function FAB({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <button
       className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform"
-      style={{ background: 'var(--accent)' }}
+      style={{
+        background: 'var(--accent)',
+        // HIGH: safe-area-inset-bottom
+        bottom: 'calc(5rem + env(safe-area-inset-bottom))',
+      }}
       onClick={onOpenModal}
       aria-label="Submit task"
     >

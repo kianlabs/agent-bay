@@ -8,6 +8,14 @@ interface ErrorCardProps {
   onViewLogs: () => void
 }
 
+function getTimeAgo(timestamp: Date): string {
+  const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
 export default function ErrorCard({
   agentId,
   agentName,
@@ -20,11 +28,11 @@ export default function ErrorCard({
   const timeAgo = getTimeAgo(timestamp)
 
   return (
-    <div 
+    <div
       className="mt-2 p-3 rounded-lg border"
-      style={{ 
-        background: 'rgba(239, 68, 68, 0.1)', 
-        borderColor: '#ef4444' 
+      style={{
+        background: 'rgba(239, 68, 68, 0.1)',
+        borderColor: '#ef4444',
       }}
     >
       {/* Error Header */}
@@ -47,48 +55,39 @@ export default function ErrorCard({
         {errorMessage}
       </p>
 
-      {/* Error Details (expandable) */}
+      {/* Error Details — MEDIUM: overflow-hidden on pre */}
       <details className="text-xs mb-3">
-        <summary 
-          className="cursor-pointer hover:underline"
+        <summary
+          className="cursor-pointer"
           style={{ color: 'var(--text-secondary)' }}
         >
           Show details
         </summary>
-        <pre 
-          className="mt-2 p-2 rounded text-xs overflow-x-auto"
-          style={{ background: 'rgba(0, 0, 0, 0.3)', color: '#fca5a5' }}
+        <pre
+          className="mt-2 p-2 text-xs overflow-x-auto overflow-hidden rounded"
+          style={{ background: 'rgba(0, 0, 0, 0.3)', color: 'var(--text-secondary)' }}
         >
           {errorDetails}
         </pre>
       </details>
 
-      {/* Action Buttons */}
+      {/* Actions — HIGH: py-2.5 min-h-[44px] */}
       <div className="flex gap-2">
         <button
           onClick={onRetry}
-          className="px-3 py-1.5 text-xs font-medium rounded hover:opacity-80 transition-opacity"
-          style={{ background: '#ef4444', color: 'white' }}
+          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center"
+          style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
         >
-          🔄 Retry
+          Retry
         </button>
         <button
           onClick={onViewLogs}
-          className="px-3 py-1.5 text-xs font-medium rounded border hover:opacity-80 transition-opacity"
-          style={{ borderColor: '#ef4444', color: '#ef4444' }}
+          className="px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg hover:opacity-80 transition-opacity flex items-center"
+          style={{ background: 'rgba(139,148,158,0.1)', color: 'var(--text-secondary)' }}
         >
-          📋 View Logs
+          View Logs
         </button>
       </div>
     </div>
   )
-}
-
-function getTimeAgo(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000)
-  
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
 }

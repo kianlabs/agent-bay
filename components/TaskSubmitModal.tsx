@@ -47,9 +47,9 @@ export default function TaskSubmitModal({ onClose }: TaskSubmitModalProps) {
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose() }}
     >
-      {/* Sheet */}
+      {/* Sheet — HIGH: max-h-[90dvh] + overflow-y-auto for keyboard safe area */}
       <div
-        className="w-full max-w-lg rounded-2xl p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto"
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
       >
         {/* Header */}
@@ -57,10 +57,11 @@ export default function TaskSubmitModal({ onClose }: TaskSubmitModalProps) {
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
             Submit Task
           </h2>
+          {/* HIGH: close button w-11 h-11 */}
           <button
             onClick={onClose}
             disabled={loading}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-primary)] disabled:opacity-40"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-primary)] disabled:opacity-40"
             style={{ color: 'var(--text-secondary)' }}
             aria-label="Close"
           >
@@ -86,11 +87,12 @@ export default function TaskSubmitModal({ onClose }: TaskSubmitModalProps) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* HIGH: rows=3 to keep modal compact on mobile */}
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe the task for your agent…"
-              rows={5}
+              rows={3}
               disabled={loading}
               className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-colors disabled:opacity-50"
               style={{

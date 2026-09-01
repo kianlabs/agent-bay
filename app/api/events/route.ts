@@ -7,6 +7,13 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { agentId, message } = body
 
+    if (!agentId || typeof agentId !== 'string') {
+      return NextResponse.json({ error: 'agentId is required and must be a string' }, { status: 400 })
+    }
+    if (!message || typeof message !== 'string') {
+      return NextResponse.json({ error: 'message is required and must be a string' }, { status: 400 })
+    }
+
     const event = await prisma.event.create({
       data: {
         agentId,
