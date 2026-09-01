@@ -280,6 +280,7 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
           data: {
             status: 'working',
             currentTask: step.task,
+            currentTaskId: taskId,
             lastError: null,
             errorDetails: null,
             errorTimestamp: null,
@@ -313,6 +314,7 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
             data: {
               status: 'idle',
               currentTask: 'Waiting for task',
+              currentTaskId: null,
               tasksCompleted: { increment: 1 },
             },
           })
@@ -526,6 +528,7 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
         data: {
           status: 'idle',
           currentTask: 'Waiting for task',
+          currentTaskId: null,
           tasksCompleted: { increment: 1 },
         },
       })
@@ -606,6 +609,7 @@ async function resetStaleAgentsForTask(taskId: string) {
           data: {
             status: 'idle',
             currentTask: 'Waiting for task',
+            currentTaskId: null,
           },
         })
         console.log(`[Orchestrator] Reset agent ${agent.name} to idle (task ${taskId} failed)`)

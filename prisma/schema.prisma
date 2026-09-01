@@ -23,6 +23,7 @@ model Agent {
   errorDetails    String?
   errorTimestamp  DateTime?
   maxCapacity     Int       @default(20)
+  currentTaskId   String?
   
   // Relations
   events          Event[]
