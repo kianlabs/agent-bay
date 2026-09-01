@@ -4,12 +4,12 @@
 
 // Agent timeout configuration (in milliseconds)
 export const AGENT_TIMEOUTS = {
-  mainPlanning: parseInt(process.env.HERMES_TIMEOUT_MAIN_PLANNING || '120000', 10),
-  research: parseInt(process.env.HERMES_TIMEOUT_RESEARCH || '180000', 10),
-  backend: parseInt(process.env.HERMES_TIMEOUT_BACKEND || '300000', 10),
-  frontend: parseInt(process.env.HERMES_TIMEOUT_FRONTEND || '300000', 10),
+  mainPlanning: parseInt(process.env.HERMES_TIMEOUT_MAIN_PLANNING || '180000', 10),
+  research: parseInt(process.env.HERMES_TIMEOUT_RESEARCH || '300000', 10),
+  backend: parseInt(process.env.HERMES_TIMEOUT_BACKEND || '600000', 10),
+  frontend: parseInt(process.env.HERMES_TIMEOUT_FRONTEND || '600000', 10),
   review: parseInt(process.env.HERMES_TIMEOUT_REVIEW || '300000', 10),
-  mainEvaluation: parseInt(process.env.HERMES_TIMEOUT_MAIN_EVAL || '180000', 10),
+  mainEvaluation: parseInt(process.env.HERMES_TIMEOUT_MAIN_EVAL || '300000', 10),
 } as const
 
 // Agent profile mapping
