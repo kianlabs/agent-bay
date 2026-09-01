@@ -5,21 +5,16 @@ import {
   executeHermesMainPlanning,
   executeHermesMainEvaluation,
 } from './hermes-executor'
-import { MAX_CONCURRENT_WORKERS } from './hermes-config'
+import { MAX_CONCURRENT_WORKERS, toLogicalAgentName } from './hermes-config'
 import { routeTask } from './hermes-runner'
 import { tryAcquireLock, releaseLock, isLocked } from './execution-lock'
 import { trackAgentForTask, getAgentsForTask, clearAgentsForTask, isAgentUsedByOtherActiveTask } from './task-agent-tracking'
+import { normalizePlan, validateExecutionPlan, type ExecutionStep } from './dependency-graph'
+import { ParallelScheduler } from './parallel-scheduler'
+import { executeStepsInParallel } from './parallel-execution'
+import { workerCoordinator } from './worker-execution-coordinator'
 
-// Track running workers (Main not counted)
-let runningWorkers = 0
-
-// Agent name mapping: plan uses lowercase, DB uses capitalized
-const AGENT_NAME_MAP: Record<string, string> = {
-  research: 'Researcher',
-  backend: 'Backend',
-  frontend: 'Frontend',
-  review: 'Review',
-}
+// Legacy runningWorkers counter removed - concurrency now managed by worker-execution-coordinator
 
 /**
  * Orchestrate full task execution (public API)
@@ -180,7 +175,36 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
     }
 
     // === PHASE 2: EXECUTE AGENTS ===
-    console.log('[Orchestrator] Phase 2: Executing agents')
+    console.log('[Orchestrator] Phase 2: Executing agents (parallel with dependencies)')
+    
+    // Normalize plan to execution steps with stable IDs
+    const steps = normalizePlan(plan)
+    
+    // Validate dependency graph
+    const validation = validateExecutionPlan(steps)
+    if (!validation.valid) {
+      console.error('[Orchestrator] Invalid execution plan:', validation.errors)
+      
+      await prisma.task.update({
+        where: { id: taskId },
+        data: {
+          status: 'error',
+          error: `Invalid execution plan: ${validation.errors.join(', ')}`,
+          completedAt: new Date(),
+        },
+      })
+      
+      return
+    }
+    
+    // Initialize parallel scheduler
+    const scheduler = new ParallelScheduler()
+    scheduler.initializeSteps(steps)
+    
+    // Execute steps in parallel with dependency awareness
+    await executeStepsInParallel(taskId, steps, scheduler)
+    
+    // Build agentResults from step states for evaluation
     const agentResults: Array<{
       agent: string
       result?: string
@@ -189,8 +213,34 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
       truncated?: boolean
       logPath?: string
     }> = []
+    
+    for (const step of steps) {
+      const state = scheduler.getStepState(step.id)
+      if (!state) continue
+      
+      if (state.status === 'completed') {
+        agentResults.push({
+          agent: step.agent,
+          result: state.result || '',
+          durationMs: state.durationMs || 0,
+        })
+      } else if (state.status === 'error') {
+        agentResults.push({
+          agent: step.agent,
+          error: state.error || 'Unknown error',
+          durationMs: state.durationMs || 0,
+        })
+      } else if (state.status === 'skipped') {
+        agentResults.push({
+          agent: step.agent,
+          error: state.error || 'Skipped',
+          durationMs: 0,
+        })
+      }
+    }
 
-    // Simple sequential execution for now (TODO: parallel with dependencies)
+    // Sequential execution code removed - now using parallel scheduler
+    /*
     for (const step of plan.agents) {
       const agentName = AGENT_NAME_MAP[step.agent]
       if (!agentName) {
@@ -365,6 +415,7 @@ export async function runOrchestrationLocked(taskId: string, prompt: string) {
         runningWorkers--
       }
     }
+    */
 
     // Save agent results
     await prisma.task.update({
@@ -567,6 +618,13 @@ async function resetStaleAgentsForTask(taskId: string) {
 
 /**
  * Fallback to old keyword routing when planning fails
+ *
+ * MUST go through the global worker coordinator just like normal parallel
+ * execution so that:
+ * - the same Agent instance cannot run twice concurrently
+ * - fallback workers count toward MAX_CONCURRENT_WORKERS
+ *
+ * Runs under the existing task execution lock; does NOT acquire/release it here.
  */
 async function fallbackToKeywordRouting(taskId: string, prompt: string) {
   console.log('[Orchestrator] Using fallback keyword routing')
@@ -597,6 +655,20 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
     })
   }
 
+  // Resolve display name -> logical agent name for the global coordinator.
+  const logicalAgent = toLogicalAgentName(agentName)
+  if (!logicalAgent) {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: 'error',
+        error: `Agent ${agentName} not a core worker`,
+        completedAt: new Date(),
+      },
+    })
+    return
+  }
+
   // Find agent
   const agent = await prisma.agent.findFirst({
     where: { name: agentName },
@@ -614,9 +686,13 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
     return
   }
 
-  runningWorkers++
+  // Acquire global worker slot (blocks if agent busy or global capacity exhausted)
+  await workerCoordinator.acquire(logicalAgent)
 
   try {
+    // Track this agent for the task (scoped cleanup / shared-agent ownership)
+    trackAgentForTask(taskId, agent.id)
+
     await prisma.agent.update({
       where: { id: agent.id },
       data: { status: 'working' },
@@ -664,6 +740,7 @@ async function fallbackToKeywordRouting(taskId: string, prompt: string) {
       })
     }
   } finally {
-    runningWorkers--
+    // CRITICAL: Always release the global worker slot (covers throws too)
+    workerCoordinator.release(logicalAgent)
   }
 }

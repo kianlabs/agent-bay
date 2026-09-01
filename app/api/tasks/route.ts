@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { orchestrateTask } from '@/lib/hermes-orchestrator'
+import { pusherServer } from '@/lib/pusher-server'
 
 export async function GET() {
   try {
@@ -40,9 +41,14 @@ export async function POST(request: Request) {
     })
 
     // Execute task in background via orchestrator (don't await)
-    orchestrateTask(task.id, prompt).catch((err) => {
-      console.error(`[API Tasks] Orchestration failed for task ${task.id}:`, err)
-    })
+    orchestrateTask(task.id, prompt)
+      .then(async () => {
+        await pusherServer.trigger('agent-ops', 'metrics-updated', {})
+      })
+      .catch(async (err) => {
+        console.error(`[API Tasks] Orchestration failed for task ${task.id}:`, err)
+        await pusherServer.trigger('agent-ops', 'metrics-updated', {})
+      })
 
     return NextResponse.json({
       task,
