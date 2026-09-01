@@ -1,9 +1,40 @@
 'use client'
 
 import { useState } from 'react'
+import { SkeletonBlock, SkeletonText } from './Skeleton'
 import WorkloadBar from './WorkloadBar'
 import ErrorCard from './ErrorCard'
 import LogViewerModal from './LogViewerModal'
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+
+function AgentCardSkeleton() {
+  return (
+    <div className="p-3 rounded-lg border border-[#21262d] bg-[#161b22] flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-[#1a2035] animate-pulse flex-shrink-0" />
+        <SkeletonBlock className="h-4" width="40%" />
+        <SkeletonBlock className="h-5 rounded-full ml-auto" width="20%" />
+      </div>
+      <SkeletonText width="85%" />
+      <SkeletonBlock className="h-2 rounded-full" width="100%" />
+      <SkeletonText width="30%" />
+    </div>
+  )
+}
+
+function AgentListSkeleton() {
+  return (
+    <section className="px-4 pb-6">
+      <SkeletonBlock className="h-4 mb-3" width="120px" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <AgentCardSkeleton key={i} />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 interface Agent {
   id: string
@@ -20,7 +51,8 @@ interface Agent {
   currentTaskId?: string | null
 }
 
-export default function AgentDetailList({ agents }: { agents: Agent[] }) {
+export default function AgentDetailList({ agents, loading }: { agents: Agent[]; loading?: boolean }) {
+  if (loading) return <AgentListSkeleton />
   const [logModal, setLogModal] = useState<{
     taskId: string
     agentName: string

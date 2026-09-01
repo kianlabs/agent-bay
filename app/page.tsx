@@ -161,7 +161,7 @@ export default function Home() {
       <Header connected={connected} />
       <MetricsGrid metrics={metrics} />
       <AgentBay agents={agents} speechBubbles={speechBubbles} />
-      <AgentDetailList agents={agents} />
+      <AgentDetailList agents={agents} loading={loading} />
       <TaskHistoryPanel />
       <FAB onOpenModal={() => setModalOpen(true)} />
       <BottomNav />

@@ -3,11 +3,19 @@ import { prisma } from '@/lib/prisma'
 import { orchestrateTask } from '@/lib/hermes-orchestrator'
 import { pusherServer } from '@/lib/pusher-server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
+
     const tasks = await prisma.task.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
+      where: {
+        ...(status ? { status } : {}),
+        ...(search ? { prompt: { contains: search } } : {}),
+      },
     })
 
     return NextResponse.json(tasks)

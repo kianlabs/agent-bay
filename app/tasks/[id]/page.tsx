@@ -382,15 +382,24 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   // ── Loading state ──
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div
-            className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-3"
-            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-          />
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Loading task…
-          </p>
+      <main className="min-h-screen pb-12" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        {/* Header skeleton */}
+        <div className="sticky top-0 z-10 px-4 py-3 flex items-center gap-3 border-b animate-pulse"
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div className="h-8 w-16 rounded-lg bg-[#1a2035]" />
+          <div className="flex-1 h-5 rounded bg-[#1a2035]" style={{ maxWidth: '200px' }} />
+          <div className="h-8 w-20 rounded-lg bg-[#1a2035]" />
+        </div>
+        {/* Cards skeleton */}
+        <div className="px-4 py-5 flex flex-col gap-5 max-w-3xl mx-auto">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl p-5 border border-[#21262d] bg-[#161b22] flex flex-col gap-3 animate-pulse">
+              <div className="h-5 rounded bg-[#1a2035] w-1/3" />
+              <div className="h-3 rounded bg-[#1a2035] w-full" />
+              <div className="h-3 rounded bg-[#1a2035] w-4/5" />
+              <div className="h-3 rounded bg-[#1a2035] w-2/3" />
+            </div>
+          ))}
         </div>
       </main>
     )

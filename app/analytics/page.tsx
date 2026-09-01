@@ -171,6 +171,29 @@ export default function AnalyticsPage() {
 
       {/* Content */}
       <div className="px-4 py-4 flex flex-col gap-6">
+        {loading && !data && (
+          <div className="flex flex-col gap-6 animate-pulse">
+            {/* Stat cards skeleton */}
+            <div className="grid grid-cols-3 gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-xl p-4 flex flex-col gap-2" style={{ background: '#161b22', border: '1px solid #30363d' }}>
+                  <div className="h-3 rounded bg-[#1a2035] w-2/3" />
+                  <div className="h-7 rounded bg-[#1a2035] w-1/2" />
+                  <div className="h-2 rounded bg-[#1a2035] w-1/3" />
+                </div>
+              ))}
+            </div>
+            {/* Chart skeletons */}
+            {Array.from({ length: 3 }).map((_, i) => (
+              <section key={i}>
+                <div className="h-4 rounded bg-[#1a2035] w-48 mb-3" />
+                <div className="rounded-xl p-4" style={{ background: '#161b22', border: '1px solid #30363d' }}>
+                  <div className="h-44 rounded bg-[#1a2035]" />
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
         {error && (
           <div
             className="rounded-xl p-4 text-sm"
