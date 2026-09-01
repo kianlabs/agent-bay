@@ -4,6 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getPusherClient } from '@/lib/pusher-client'
 
+type CancellableStatus = 'pending' | 'planning' | 'running'
+
+function isCancellable(status: Task['status']): status is CancellableStatus {
+  return status === 'pending' || status === 'planning' || status === 'running'
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Task {
@@ -56,6 +62,8 @@ export default function TaskHistoryPanel() {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -67,6 +75,24 @@ export default function TaskHistoryPanel() {
       // silently ignore network errors — stale data is fine here
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const handleCancel = useCallback(async (taskId: string) => {
+    setConfirmId(null)
+    setCancellingId(taskId)
+    try {
+      await fetch(`/api/tasks/${taskId}/cancel`, { method: 'POST' })
+      // Refresh list after cancel
+      const res = await fetch('/api/tasks')
+      if (res.ok) {
+        const data = await res.json()
+        setTasks(data.slice(0, 10))
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setCancellingId(null)
     }
   }, [])
 
@@ -184,6 +210,21 @@ export default function TaskHistoryPanel() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <StatusBadge status={task.status} />
+                  {isCancellable(task.status) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmId(task.id)
+                      }}
+                      disabled={cancellingId === task.id}
+                      className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold transition-colors hover:opacity-80 disabled:opacity-40"
+                      style={{ background: 'rgba(248,81,73,0.15)', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)' }}
+                      aria-label={`Cancel task: ${task.prompt}`}
+                      title="Cancel task"
+                    >
+                      {cancellingId === task.id ? '…' : '×'}
+                    </button>
+                  )}
                   <span style={{ color: 'var(--text-secondary)' }} className="text-xs">›</span>
                 </div>
               </li>
@@ -191,6 +232,49 @@ export default function TaskHistoryPanel() {
           </ul>
         )}
       </div>
+
+      {/* ── Cancel confirmation dialog ── */}
+      {confirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-confirm-title"
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border p-6 flex flex-col gap-4"
+            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+          >
+            <h2
+              id="cancel-confirm-title"
+              className="text-base font-semibold"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              Cancel this task?
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              This will stop all running agents and mark the task as cancelled. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmId(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+                style={{ background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              >
+                Keep running
+              </button>
+              <button
+                onClick={() => handleCancel(confirmId)}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+                style={{ background: 'rgba(248,81,73,0.15)', color: '#f85149', border: '1px solid rgba(248,81,73,0.4)' }}
+              >
+                Yes, cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
