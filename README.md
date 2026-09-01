@@ -1,239 +1,313 @@
-# 🚀 Agent Ops Dashboard - Developer Team Monitor
+# 🤖 Agent Bay
 
-Real-time dashboard untuk memantau tim developer AI agents (Researcher, Frontend, Backend, Review).
+<div align="center">
 
-## 🎯 Features
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
+[![Pusher](https://img.shields.io/badge/Pusher-WebSocket-300D4F?style=flat-square&logo=pusher)](https://pusher.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-- ✅ **Real-time Updates** via Pusher WebSocket
-- ✅ **4 Developer Agents** dengan role berbeda
-- ✅ **Metrics Dashboard**: Tasks, Build Status, Tests, PRs
-- ✅ **Speech Bubbles** untuk activity updates
-- ✅ **Connection Indicator** (Live badge)
-- ✅ **Auto Simulator** untuk demo
+**A real-time multi-agent AI coding dashboard for orchestrating parallel AI workflows.**
 
-## 📦 Stack
+[Features](#features) · [Getting Started](#getting-started) · [Architecture](#architecture) · [API Reference](#api-reference) · [Contributing](#contributing)
 
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- Prisma + SQLite
-- Pusher (WebSocket)
-- React Three Fiber (optional 3D scene)
+</div>
 
-## 🚀 Quick Start
+---
 
-### 1. Install Dependencies
+## 📸 Demo
+
+<div align="center">
+
+| Dashboard Overview | Task Detail | Analytics |
+|---|---|---|
+| [Dashboard Screenshot] | [Task Detail Screenshot] | [Analytics Screenshot] |
+
+> 🎬 [Live Demo GIF — Agent execution in real-time]
+
+</div>
+
+---
+
+## ✨ Features
+
+### 📡 Real-time Monitoring
+- **Live log streaming** via Server-Sent Events (SSE) — watch agents think and act as it happens
+- **WebSocket updates** powered by Pusher for instant dashboard refresh
+- **Agent status indicators** — idle, running, completed, or failed at a glance
+- **Notification center** with real-time alerts for task events
+
+### 📋 Task Management
+- **Submit coding tasks** through a clean form interface
+- **Cancel running tasks** mid-execution with graceful shutdown
+- **Task recovery** — resume interrupted tasks without losing progress
+- **Task detail page** with full execution history and agent logs
+- **Execution locking** to prevent duplicate concurrent runs
+
+### 🧠 Multi-Agent Orchestration
+- **5 specialized Hermes AI agents**: Main (orchestrator), Researcher, Frontend, Backend, Review
+- **DAG dependency graph** — visualize task dependencies and execution order
+- **Parallel agent execution** — multiple agents work simultaneously on subtasks
+- **Automatic task planning** — Main agent decomposes complex requests into subtasks
+
+### 📊 Analytics & Observability
+- **Analytics page** with interactive charts powered by Recharts
+- **Task success/failure rates**, execution time trends, and agent utilization
+- **Mobile-optimized** layout — monitor deployments from anywhere
+- **Full execution history** with searchable log records
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend** | Next.js 14, React, Tailwind CSS | App shell, routing, UI components |
+| **Backend** | Next.js API Routes, Node.js | REST API, SSE log streaming |
+| **Database** | Prisma ORM + SQLite | Task, agent, and log persistence |
+| **Real-time** | Pusher WebSocket | Live dashboard updates across clients |
+| **AI Agents** | Hermes Agent CLI | Orchestration, code generation, review |
+
+---
+
+## 🏗 Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                        User                              │
+│                         │                               │
+│                         ▼                               │
+│              ┌─────────────────────┐                    │
+│              │   Next.js Dashboard │                    │
+│              │  (React + Tailwind) │                    │
+│              └────────┬────────────┘                    │
+│                       │  REST API / SSE                 │
+│                       ▼                                 │
+│              ┌─────────────────────┐                    │
+│              │   API Routes        │◄──── Pusher WS ────┐│
+│              │  (Next.js Backend)  │                    ││
+│              └────────┬────────────┘                    ││
+│                       │                                 ││
+│                       ▼                                 ││
+│              ┌─────────────────────┐                    ││
+│              │   Hermes Main Agent │                    ││
+│              │   (Orchestrator)    │────────────────────┘│
+│              └────────┬────────────┘   Pusher Events     │
+│                       │ Spawn & Coordinate               │
+│          ┌────────────┼────────────┐                     │
+│          ▼            ▼            ▼                     │
+│   ┌────────────┐ ┌──────────┐ ┌──────────┐             │
+│   │ Researcher │ │ Frontend │ │ Backend  │             │
+│   │   Agent    │ │  Agent   │ │  Agent   │             │
+│   └────────────┘ └──────────┘ └──────────┘             │
+│                       │                                  │
+│                       ▼                                  │
+│              ┌─────────────────────┐                    │
+│              │    Review Agent     │                    │
+│              │  (QA & Validation)  │                    │
+│              └────────┬────────────┘                    │
+│                       │                                  │
+│                       ▼                                  │
+│              ┌─────────────────────┐                    │
+│              │   Results + Logs    │                    │
+│              │   (Prisma/SQLite)   │                    │
+│              └─────────────────────┘                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js** 18+ and **npm** / **pnpm**
+- **Hermes Agent CLI** installed and configured
+- **Pusher account** (free tier works fine) — [sign up here](https://pusher.com/)
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/kianlabs/agent-bay.git
+cd agent-bay
+
+# Install dependencies
 npm install
+# or
+pnpm install
 ```
 
-### 2. Setup Pusher
-1. Buat akun di [pusher.com](https://pusher.com)
-2. Create app (pilih region: Asia Pacific - ap1)
-3. Copy credentials ke `.env`:
-```env
-PUSHER_APP_ID="your-app-id"
-PUSHER_KEY="your-key"
-PUSHER_SECRET="your-secret"
-PUSHER_CLUSTER="ap1"
+### Environment Setup
 
-NEXT_PUBLIC_PUSHER_KEY="your-key"
-NEXT_PUBLIC_PUSHER_CLUSTER="ap1"
-```
+Copy the example env file and fill in your values:
 
-### 3. Database Setup
 ```bash
-npx prisma db push
-npm run db:seed
+cp .env.example .env
 ```
 
-### 4. Run Dev Server
+See the [Environment Variables](#environment-variables) section for a full reference.
+
+### Database Setup
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations (creates SQLite DB)
+npx prisma migrate dev --name init
+
+# (Optional) seed with sample data
+npx prisma db seed
+```
+
+### Run Development Server
+
 ```bash
 npm run dev
 ```
 
-### 5. Run Simulator (Terminal baru)
-```bash
-npm run simulate
-```
+Open [http://localhost:3000](http://localhost:3000) to see the dashboard.
 
-### 6. Open Dashboard
-```
-http://localhost:3000
-```
+> **Tip:** Pusher keys must be set before real-time features activate. Without them, the app falls back to polling.
 
-## 📊 Data Model
+---
 
-### Agent (Developer)
-- **Researcher**: Membaca docs, riset arsitektur
-- **Frontend**: Menulis komponen UI, styling
-- **Backend**: Endpoint API, database migrations
-- **Review**: Code review, testing manual
+## 🔐 Environment Variables
 
-### Metrics
-- Tasks completed today
-- Build status (passing/failing)
-- Tests passed/failed
-- PRs reviewed
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | ✅ | Prisma DB connection string (e.g. `file:./dev.db`) |
+| `PUSHER_APP_ID` | ✅ | Pusher application ID |
+| `PUSHER_KEY` | ✅ | Pusher public key |
+| `PUSHER_SECRET` | ✅ | Pusher secret key |
+| `PUSHER_CLUSTER` | ✅ | Pusher cluster region (e.g. `ap1`) |
+| `NEXT_PUBLIC_PUSHER_KEY` | ✅ | Pusher key exposed to the browser |
+| `NEXT_PUBLIC_PUSHER_CLUSTER` | ✅ | Pusher cluster exposed to the browser |
+| `HERMES_MODEL` | ✅ | Model identifier for Hermes agents (e.g. `hermes-3-405b`) |
+| `HERMES_API_KEY` | ✅ | API key for the Hermes provider |
+| `HERMES_BASE_URL` | ⬜ | Custom base URL if using a self-hosted Hermes gateway |
+| `MAX_CONCURRENT_AGENTS` | ⬜ | Max agents to run in parallel (default: `3`) |
+| `TASK_TIMEOUT_MS` | ⬜ | Task execution timeout in milliseconds (default: `300000`) |
+| `LOG_LEVEL` | ⬜ | Logging verbosity: `debug`, `info`, `warn`, `error` |
 
-### Events
-- Speech bubbles (mis. "PR approved ✓", "build gagal")
+---
 
-## 🎮 Simulator
+## 📡 API Reference
 
-Script `simulator.sh` trigger `/api/simulate` setiap 5 detik:
-- Random agent berubah status (idle/working/error)
-- Task baru sesuai role
-- Speech bubbles muncul (25% chance)
-- Metrics update (20% chance)
+All endpoints are under `/api` and return JSON.
+
+### Agents
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/agents` | List all agents and their current status |
+| `GET` | `/api/agents/:id` | Get a single agent's details and stats |
+| `POST` | `/api/agents/:id/restart` | Restart a specific agent process |
+
+### Tasks
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/tasks` | List tasks (supports `?status=`, `?limit=`, `?offset=`) |
+| `POST` | `/api/tasks` | Submit a new task for orchestration |
+| `GET` | `/api/tasks/:id` | Get task details, subtasks, and DAG |
+| `DELETE` | `/api/tasks/:id` | Cancel a running task |
+| `GET` | `/api/tasks/:id/status` | Poll task execution status |
+
+### Logs
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/logs` | Query logs with filters (`?taskId=`, `?agentId=`, `?level=`) |
+| `GET` | `/api/logs/stream` | SSE endpoint — stream live logs for a task |
+
+### Analytics
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/analytics` | Aggregate stats: success rates, avg duration, agent utilization |
+| `GET` | `/api/analytics/timeline` | Task throughput over time (supports `?range=7d\|30d`) |
+
+### Notifications
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/notifications` | Get recent notifications for the current session |
+| `POST` | `/api/notifications/read` | Mark notifications as read |
+
+---
 
 ## 📁 Project Structure
 
 ```
-├── app/
-│   ├── page.tsx                    # Main dashboard (Pusher client)
-│   ├── layout.tsx
-│   ├── globals.css
-│   └── api/
-│       ├── agents/route.ts         # GET all agents
-│       ├── agents/[id]/route.ts    # PATCH update agent
-│       ├── metrics/route.ts        # GET metrics
-│       ├── events/route.ts         # POST create event
-│       └── simulate/route.ts       # GET trigger random updates
-├── components/
-│   ├── Header.tsx                  # Connection indicator
-│   ├── MetricsGrid.tsx             # 4 metric cards
-│   ├── AgentBay.tsx                # Agent cards + speech bubbles
-│   ├── AgentDetailList.tsx         # Agent stats
-│   ├── FAB.tsx                     # Floating action button
-│   └── BottomNav.tsx               # Bottom navigation
-├── lib/
-│   ├── prisma.ts
-│   ├── pusher-server.ts            # Server instance
-│   └── pusher-client.ts            # Client instance
+agent-bay/
+├── app/                        # Next.js App Router
+│   ├── (dashboard)/            # Dashboard layout group
+│   │   ├── page.tsx            # Main dashboard view
+│   │   ├── tasks/
+│   │   │   ├── page.tsx        # Task list
+│   │   │   └── [id]/page.tsx   # Task detail + live logs
+│   │   ├── agents/page.tsx     # Agent status grid
+│   │   ├── analytics/page.tsx  # Charts and metrics
+│   │   └── layout.tsx          # Sidebar + notification center
+│   └── api/                    # API route handlers
+│       ├── agents/
+│       ├── tasks/
+│       ├── logs/
+│       ├── analytics/
+│       └── notifications/
+├── components/                 # Shared React components
+│   ├── AgentCard.tsx
+│   ├── TaskForm.tsx
+│   ├── LogStream.tsx
+│   ├── DAGGraph.tsx
+│   └── NotificationBell.tsx
+├── lib/                        # Core logic
+│   ├── orchestrator.ts         # Hermes agent spawning & coordination
+│   ├── pusher.ts               # Pusher server + client setup
+│   ├── prisma.ts               # Prisma client singleton
+│   └── execution-lock.ts       # Distributed execution locking
 ├── prisma/
-│   ├── schema.prisma
-│   ├── seed.ts
-│   └── dev.db
-└── simulator.sh                     # Auto-trigger script
+│   ├── schema.prisma           # DB schema
+│   └── migrations/
+├── public/
+├── .env.example
+└── package.json
 ```
-
-## 🎨 UI Components
-
-### Header
-- Logo + workspace name
-- **Live badge** (hijau = connected, abu-abu = disconnected)
-- Notification bell
-- User avatar
-
-### Metrics Grid (2x2)
-1. **Tasks Completed** - angka + "x in progress"
-2. **Build Status** - Passing/Failing + waktu terakhir
-3. **Tests** - x/y passed + percentage
-4. **PRs Reviewed** - angka hari ini
-
-### Developer Bay
-- 2x2 grid agent cards
-- Avatar + name + current task
-- Speech bubbles (auto-hide 4s)
-- Status badge (Working/Error)
-
-### Agent Detail List
-- Color dot per agent
-- Current task description
-- Stats: "x in queue · y done"
-
-## 🔄 Pusher Events
-
-**Channel:** `agent-ops`
-
-**Events:**
-- `agent-updated` - Status/task berubah
-- `metrics-updated` - Metrics berubah
-- `new-message` - Speech bubble baru
-
-## 🧪 Testing
-
-### Test API
-```bash
-# Get agents
-curl http://localhost:3000/api/agents | jq
-
-# Get metrics
-curl http://localhost:3000/api/metrics | jq
-
-# Trigger simulation
-curl http://localhost:3000/api/simulate | jq
-```
-
-### Test Pusher
-1. Open browser console
-2. Watch for: `Pusher state: connected`
-3. Watch for events: `Agent updated:`, `Metrics updated:`
-
-## 🐛 Troubleshooting
-
-### "Connecting..." stuck
-- Check Pusher credentials di `.env`
-- Verify NEXT_PUBLIC_* variables
-- Restart dev server
-
-### No real-time updates
-- Check browser console for errors
-- Verify simulator running: `ps aux | grep simulator`
-- Check Pusher dashboard: [dashboard.pusher.com](https://dashboard.pusher.com)
-
-### Database issues
-```bash
-# Reset database
-npx prisma db push --force-reset
-npm run db:seed
-```
-
-## 📝 Environment Variables
-
-Required in `.env`:
-```env
-DATABASE_URL="file:./dev.db"
-PUSHER_APP_ID="..."
-PUSHER_KEY="..."
-PUSHER_SECRET="..."
-PUSHER_CLUSTER="ap1"
-NEXT_PUBLIC_PUSHER_KEY="..."
-NEXT_PUBLIC_PUSHER_CLUSTER="ap1"
-```
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-1. Push to GitHub
-2. Import to Vercel
-3. Add environment variables
-4. Use PostgreSQL (replace SQLite):
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-5. Run migrations: `npx prisma migrate deploy`
-
-## 📚 Resources
-
-- [Next.js Docs](https://nextjs.org/docs)
-- [Pusher Docs](https://pusher.com/docs)
-- [Prisma Docs](https://prisma.io/docs)
-- [Tailwind CSS](https://tailwindcss.com)
-
-## 🎯 Next Steps (Optional)
-
-- [ ] Add 3D isometric office (react-three-fiber)
-- [ ] Add authentication
-- [ ] Add manual task assignment UI
-- [ ] Add agent performance charts
-- [ ] Add dark mode toggle
-- [ ] Deploy to production
 
 ---
 
-Built with ❤️ using Next.js + Pusher
+## ⚙️ How It Works
+
+Agent Bay turns a natural-language coding request into coordinated, parallel agent work across three phases:
+
+**1. Planning**
+The Main (orchestrator) agent receives a task and decomposes it into a DAG of subtasks — identifying dependencies, parallelizable work, and the right specialist for each piece.
+
+**2. Parallel Execution**
+Worker agents (Researcher, Frontend, Backend) execute their subtasks concurrently. Each agent streams logs back to the dashboard via SSE, and status updates are broadcast to all connected clients through Pusher.
+
+**3. Evaluation**
+Once subtasks complete, the Review agent runs quality checks across the combined output, flags issues, and either approves the result or triggers targeted retries. Final output and execution metadata are persisted to the database.
+
+> Execution locks prevent duplicate runs, and recovery logic resumes interrupted tasks at the last completed checkpoint — so a network blip doesn't waste your compute.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome. To get started:
+
+1. Fork the repo and create a feature branch (`git checkout -b feat/your-feature`)
+2. Make your changes and add tests where applicable
+3. Open a pull request with a clear description of what changed and why
+
+Please keep PRs focused — one feature or fix per PR makes review much faster.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © 2024 [kianlabs](https://github.com/kianlabs)
